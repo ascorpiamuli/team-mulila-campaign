@@ -33,7 +33,7 @@ export function Navbar() {
             aria-label="Claude Community Kenya — Home"
           >
             <span className="text-text-dim">~/</span>
-            <span className="text-green-primary group-hover:drop-shadow-[0_0_6px_rgba(0,255,65,0.4)]">CCK</span>
+            <span className="text-green-primary group-hover:drop-shadow-[0_0_6px_rgba(0,255,65,0.4)]">ASCORPI</span>
             <span className="cursor-blink text-green-primary">▊</span>
           </Link>
 
@@ -80,7 +80,7 @@ export function Navbar() {
               href="/join"
               className="ml-2 border border-green-primary px-4 py-1.5 font-mono text-sm text-green-primary transition-all hover:bg-green-primary hover:text-bg-primary hover:shadow-[0_0_12px_rgba(0,255,65,0.2)]"
             >
-              <span aria-hidden="true">&gt; </span>JOIN
+              <span aria-hidden="true">&gt; </span>Lets Talk
             </Link>
           </div>
 
