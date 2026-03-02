@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  ascorpi:
+    container_name: ascorpi
+    build: .
+    restart: unless-stopped
+
+    networks:
+      - proxy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ascorpi.rule=Host(`ascorpi.cloud`)"
+      - "traefik.http.routers.ascorpi.entrypoints=websecure"
+      - "traefik.http.routers.ascorpi.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ascorpi.loadbalancer.server.port=3000"
+
+networks:
+  proxy:
+    external: true

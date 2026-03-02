@@ -1,0 +1,55 @@
+name: Deploy Ascorpi to VPS via Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 3: Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t stephen254795/ascorpi-ascorpi:latest .
+
+      # Step 4: Push image to Docker Hub
+      - name: Push Docker image
+        run: |
+          docker push stephen254795/ascorpi-ascorpi:latest
+
+      # Step 5: SSH into VPS and deploy
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            echo "Navigating to app directory..."
+            cd ${{ secrets.APP_DIR }}
+
+            echo "Pulling latest image from Docker Hub..."
+            docker pull stephen254795/ascorpi-ascorpi:latest
+
+            echo "Stopping existing containers..."
+            docker compose down
+
+            echo "Starting container with updated image..."
+            docker compose up -d --force-recreate
+
+            echo "Deployment completed successfully!"
