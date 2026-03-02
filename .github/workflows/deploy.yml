@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml
 name: Deploy Ascorpi to VPS via Docker Hub
 
 on:
@@ -10,28 +11,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Step 3: Build Docker image
-      - name: Build Docker image
+      - name: Build Docker image with build args
         run: |
-          docker build -t stephen254795/ascorpi-ascorpi:latest .
+          docker build \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest .
 
-      # Step 4: Push image to Docker Hub
       - name: Push Docker image
         run: |
-          docker push stephen254795/ascorpi-ascorpi:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest
 
-      # Step 5: SSH into VPS and deploy
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v0.1.6
         with:
@@ -40,16 +39,23 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            echo "Navigating to app directory..."
+            echo "🚀 Starting deployment..."
+            
             cd ${{ secrets.APP_DIR }}
-
-            echo "Pulling latest image from Docker Hub..."
-            docker pull stephen254795/ascorpi-ascorpi:latest
-
-            echo "Stopping existing containers..."
-            docker compose down
-
-            echo "Starting container with updated image..."
-            docker compose up -d --force-recreate
-
-            echo "Deployment completed successfully!"
+            
+            echo "📦 Pulling latest image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest
+            
+            echo "🛑 Stopping existing container..."
+            docker compose down || true
+            
+            echo "▶️ Starting new container..."
+            docker compose up -d
+            
+            echo "🧹 Cleaning up..."
+            docker image prune -f
+            
+            echo "📊 Container status:"
+            docker ps
+            
+            echo "✅ Deployment completed!"
