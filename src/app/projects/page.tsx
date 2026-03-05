@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { projects } from "@/data/projects";
+import { projects as localProjects } from "@/data/projects";
 import { ProjectCard } from "@/components/sections/ProjectCard";
 import { ScrollReveal, CommandPrefix } from "@/components/terminal";
 import { BreadcrumbSchema } from "@/components/schema/BreadcrumbSchema";
@@ -21,6 +21,32 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+// Transform local project data to match global Project interface
+function transformToProject(localProject: any): Project {
+  return {
+    id: localProject.id,
+    name: localProject.name,
+    builder: localProject.builder,
+    description: localProject.description,
+    full_description: localProject.fullDescription,
+    stack: localProject.stack || [],
+    status: localProject.status as ProjectStatus || null,
+    demo_url: localProject.demoUrl,
+    repo_url: localProject.repoUrl,
+    is_featured: localProject.featured || false,
+    client: localProject.client,
+    year: localProject.year,
+    highlights: localProject.highlights || [],
+    is_open_source: true,
+    seeking_contributors: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Transform all projects once
+const projects = localProjects.map(transformToProject);
 
 export default function ProjectsPage() {
   return (

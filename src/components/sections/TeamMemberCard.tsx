@@ -4,10 +4,9 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Linkedin, Github, Twitter, Globe, Mail, MapPin, Award } from "lucide-react";
-import type { TeamMember } from "@/types/team";
 
 interface TeamMemberCardProps {
-  member: TeamMember;
+  member: TeamMember; // Using global TeamMember type
   variant?: "default" | "compact" | "featured";
 }
 
@@ -25,6 +24,29 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
   const location = member.city || member.location || member.country;
   const isLead = member.is_lead || member.role === 'lead' || member.role === 'founder';
 
+  // Helper function to render skills with proper typing
+  const renderSkills = (skills: string[] | undefined) => {
+    if (!skills || skills.length === 0) return null;
+
+    return (
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {skills.slice(0, 4).map((skill: string) => (
+          <span
+            key={skill}
+            className="px-2 py-0.5 text-[9px] font-mono bg-bg-secondary/50 text-text-dim rounded-full border border-border-default"
+          >
+            {skill}
+          </span>
+        ))}
+        {skills.length > 4 && (
+          <span className="px-2 py-0.5 text-[9px] font-mono text-text-dim">
+            +{skills.length - 4}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   if (variant === "compact") {
     return (
       <Link href={`/team/${member.slug}`} className="block group">
@@ -32,8 +54,8 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
           <div className="flex items-center gap-3">
             {/* Avatar */}
             {member.avatar_url ? (
-              <img 
-                src={member.avatar_url} 
+              <img
+                src={member.avatar_url}
                 alt={member.name}
                 className="h-10 w-10 rounded-full border border-green-primary/30 object-cover"
               />
@@ -44,7 +66,7 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
                 </span>
               </div>
             )}
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h4 className="font-mono text-sm font-semibold text-green-primary group-hover:text-amber truncate">
@@ -74,8 +96,8 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
           <div className="relative h-24 bg-gradient-to-r from-green-primary/20 to-amber/20">
             {member.avatar_url ? (
               <div className="absolute -bottom-8 left-6">
-                <img 
-                  src={member.avatar_url} 
+                <img
+                  src={member.avatar_url}
                   alt={member.name}
                   className="h-16 w-16 rounded-full border-2 border-bg-card object-cover"
                 />
@@ -114,23 +136,7 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
             )}
 
             {/* Skills */}
-            {member.skills && member.skills.length > 0 && (
-              <div className="mb-4 flex flex-wrap gap-1.5">
-                {member.skills.slice(0, 3).map((skill) => (
-                  <span
-                    key={skill}
-                    className="px-2 py-0.5 text-[9px] font-mono bg-bg-secondary/50 text-text-dim rounded-full border border-border-default"
-                  >
-                    {skill}
-                  </span>
-                ))}
-                {member.skills.length > 3 && (
-                  <span className="px-2 py-0.5 text-[9px] font-mono text-text-dim">
-                    +{member.skills.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
+            {renderSkills(member.skills)}
 
             {/* Location */}
             {location && (
@@ -242,8 +248,8 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
           <div className="mb-4 flex items-center gap-4">
             {/* Avatar */}
             {member.avatar_url ? (
-              <img 
-                src={member.avatar_url} 
+              <img
+                src={member.avatar_url}
                 alt={member.name}
                 className="h-14 w-14 rounded-full border border-green-primary/30 object-cover"
               />
@@ -263,7 +269,7 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
                 {member.name}
               </h3>
               <p className="font-mono text-xs text-amber truncate">{member.title}</p>
-              
+
               {/* Location */}
               {location && (
                 <div className="flex items-center gap-1 mt-1">
@@ -284,23 +290,7 @@ export function TeamMemberCard({ member, variant = "default" }: TeamMemberCardPr
           )}
 
           {/* Skills */}
-          {member.skills && member.skills.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              {member.skills.slice(0, 4).map((skill) => (
-                <span
-                  key={skill}
-                  className="px-2 py-0.5 text-[9px] font-mono bg-bg-secondary/50 text-text-dim rounded-full border border-border-default"
-                >
-                  {skill}
-                </span>
-              ))}
-              {member.skills.length > 4 && (
-                <span className="px-2 py-0.5 text-[9px] font-mono text-text-dim">
-                  +{member.skills.length - 4}
-                </span>
-              )}
-            </div>
-          )}
+          {renderSkills(member.skills)}
 
           {/* Social links */}
           {hasSocials && (

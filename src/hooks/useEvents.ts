@@ -12,7 +12,7 @@ export function useUpcomingEvents(limit: number = 3) {
       try {
         setLoading(true);
         setError(null);
-        
+
         const { data, error } = await supabase
           .from('events')
           .select('*')
@@ -21,7 +21,7 @@ export function useUpcomingEvents(limit: number = 3) {
           .limit(limit);
 
         if (error) throw error;
-        
+
         // Transform the data to match AppEvent interface
         const transformedData = data?.map((item: any) => ({
           id: item.id,
@@ -83,7 +83,7 @@ export function useUpcomingEvents(limit: number = 3) {
           updated_at: item.updated_at,
           published_at: item.published_at
         })) || [];
-        
+
         setEvents(transformedData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch upcoming events');
@@ -108,11 +108,11 @@ export function useEventBySlug(slug: string) {
   useEffect(() => {
     async function fetchEventBySlug() {
       if (!slug) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         const { data, error } = await supabase
           .from('events')
           .select('*')
@@ -120,7 +120,7 @@ export function useEventBySlug(slug: string) {
           .single();
 
         if (error) throw error;
-        
+
         if (data) {
           const transformedData = {
             id: data.id,

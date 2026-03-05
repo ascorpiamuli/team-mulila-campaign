@@ -8,7 +8,7 @@ import { Timeline } from "@/components/ui/Timeline";
 import { Button } from "@/components/ui/Button";
 import { TeamMemberCard } from "@/components/sections/TeamMemberCard";
 import { BreadcrumbSchema } from "@/components/schema/BreadcrumbSchema";
-import { team } from "@/data/team";
+import { team as localTeam } from "@/data/team";
 import { SOCIAL_LINKS } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -27,6 +27,78 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+// Transform local team data to match global TeamMember interface
+function transformToTeamMember(localMember: any): TeamMember {
+  return {
+    id: localMember.id,
+    name: localMember.name,
+    slug: localMember.slug || localMember.id.toLowerCase().replace(/\s+/g, '-'),
+    role: localMember.role as TeamRole || 'contributor',
+    title: localMember.title || localMember.role,
+    bio: localMember.bio,
+    full_bio: localMember.full_bio,
+    email: localMember.email,
+    phone: localMember.phone,
+    website: localMember.website,
+    github: localMember.github,
+    twitter: localMember.twitter,
+    linkedin: localMember.linkedin,
+    facebook: localMember.facebook,
+    instagram: localMember.instagram,
+    youtube: localMember.youtube,
+    discord: localMember.discord,
+    slack: localMember.slack,
+    telegram: localMember.telegram,
+    whatsapp: localMember.whatsapp,
+    calendly: localMember.calendly,
+    avatar_url: localMember.avatar_url,
+    cover_image: localMember.cover_image,
+    profile_image: localMember.profile_image,
+    skills: localMember.skills || [],
+    expertise: localMember.expertise || [],
+    technologies: localMember.technologies || [],
+    languages: localMember.languages || [],
+    interests: localMember.interests || [],
+    company: localMember.company,
+    position: localMember.position,
+    years_experience: localMember.years_experience || 0,
+    specialties: localMember.specialties || [],
+    certifications: localMember.certifications || [],
+    education: localMember.education || [],
+    current_projects: localMember.current_projects || [],
+    past_projects: localMember.past_projects || [],
+    open_source_contributions: localMember.open_source_contributions || [],
+    blog_posts: localMember.blog_posts || [],
+    resources_created: localMember.resources_created || [],
+    events_hosted: localMember.events_hosted || [],
+    contributions_count: localMember.contributions_count || 0,
+    projects_count: localMember.projects_count || 0,
+    followers_count: localMember.followers_count || 0,
+    following_count: localMember.following_count || 0,
+    is_active: localMember.is_active !== undefined ? localMember.is_active : true,
+    is_core: localMember.is_core || false,
+    is_lead: localMember.is_lead || false,
+    is_mentor: localMember.is_mentor || false,
+    join_date: localMember.join_date,
+    leave_date: localMember.leave_date,
+    display_order: localMember.display_order || 0,
+    is_featured: localMember.is_featured || false,
+    timezone: localMember.timezone || 'Africa/Nairobi',
+    location: localMember.location,
+    country: localMember.country || 'Kenya',
+    city: localMember.city,
+    testimonials: localMember.testimonials || [],
+    recommendations: localMember.recommendations || [],
+    meta_title: localMember.meta_title,
+    meta_description: localMember.meta_description,
+    meta_keywords: localMember.meta_keywords || [],
+    created_at: localMember.created_at || new Date().toISOString(),
+    updated_at: localMember.updated_at || new Date().toISOString(),
+  };
+}
+
+// Transform the team data
+const team = localTeam.map(transformToTeamMember);
 
 const timelineEntries = [
   {
