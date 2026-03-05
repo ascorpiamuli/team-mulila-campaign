@@ -6,12 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:seed": "ts-node scripts/seedSupabase.ts",
+    "db:seed:force": "ts-node scripts/seedSupabase.ts --confirm-delete",
+    "db:upsert": "ts-node scripts/seedSupabase.ts --upsert",
+    "db:reset": "ts-node scripts/seedSupabase.ts --confirm-delete"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
     "devicon": "^2.17.0",
+    "dotenv": "^17.3.1",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
@@ -28,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

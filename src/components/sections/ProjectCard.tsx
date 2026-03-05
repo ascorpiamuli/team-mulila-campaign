@@ -1,142 +1,174 @@
+// components/sections/ProjectCard.tsx
+"use client";
+
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import type { Project } from "@/data/projects";
-import { ExternalLink, Github } from "lucide-react";
+import { Github, Users, ChevronRight, Globe } from "lucide-react";
+
 
 interface ProjectCardProps {
   project: Project;
+  variant?: "default" | "compact";
 }
 
+const statusColors: Record<string, string> = {
+  "live": "bg-green-500/10 text-green-500 border-green-500/30",
+  "in-production": "bg-blue-500/10 text-blue-500 border-blue-500/30",
+  "in-development": "bg-amber-500/10 text-amber-500 border-amber-500/30",
+  "completed": "bg-purple-500/10 text-purple-500 border-purple-500/30",
+};
+
 const statusLabels: Record<string, string> = {
+  "live": "Live 🚀",
   "in-production": "In Production",
   "in-development": "In Development",
-  live: "Live",
+  "completed": "Completed ✓",
 };
 
-const statusVariants: Record<string, "upcoming" | "registration-open" | "default"> = {
-  "in-production": "upcoming",
-  "in-development": "registration-open",
-  live: "upcoming",
-};
-
-export function ProjectCard({ project }: ProjectCardProps) {
-  const isPlaceholder = project.id === "your-project";
+// Helper component for social links that stops event propagation
+const SocialLink = ({ href, icon: Icon, label }: { href: string; icon: any; label: string }) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(href, '_blank', 'noopener,noreferrer');
+  };
 
   return (
-    <div
-      className={cn(
-        "border bg-bg-card transition-all duration-300",
-        "hover:-translate-y-0.5",
-        isPlaceholder
-          ? "border-dashed border-amber/50 hover:border-amber hover:shadow-[0_4px_20px_rgba(255,176,0,0.08)]"
-          : "border-border-default hover:border-border-hover hover:shadow-[0_4px_20px_rgba(0,255,65,0.08)]"
-      )}
+    <button
+      onClick={handleClick}
+      className="text-text-dim hover:text-green-primary transition-colors p-1 rounded-lg hover:bg-green-primary/5"
+      aria-label={label}
     >
-      {/* Title bar */}
-      <div className="flex items-center gap-2 border-b border-border-default px-4 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber" />
-          <span className="h-2.5 w-2.5 rounded-full bg-green-primary" />
-        </div>
-        <span className="ml-2 font-mono text-xs text-text-dim">
-          project/{project.id}
-        </span>
-      </div>
+      <Icon className="h-5 w-5" />
+    </button>
+  );
+};
 
-      {/* Content */}
-      <div className="p-6">
-        {/* Status badge */}
-        {project.status && (
-          <div className="mb-3">
-            <Badge variant={statusVariants[project.status] ?? "default"}>
-              {statusLabels[project.status] ?? project.status}
-            </Badge>
-          </div>
-        )}
-
-        {/* Project name */}
-        <h3
-          className={cn(
-            "mb-1 font-mono text-lg font-semibold",
-            isPlaceholder ? "text-amber" : "text-green-primary"
-          )}
-        >
-          {project.name}
-        </h3>
-
-        {/* Builder */}
-        <p className="mb-3 font-mono text-xs text-text-dim">
-          by {project.builder}
-        </p>
-
-        {/* Description */}
-        <p className="mb-4 text-sm text-text-secondary line-clamp-3">
-          {project.description}
-        </p>
-
-        {/* Tech stack tags */}
-        <div className="mb-4 flex flex-wrap gap-2">
-          {project.stack.map((tech) => (
-            <span
-              key={tech}
-              className="border border-border-default bg-bg-elevated px-2 py-0.5 font-mono text-xs text-text-dim"
-            >
-              {tech}
-            </span>
-          ))}
-        </div>
-
-        {/* Links or CTA */}
-        {isPlaceholder ? (
-          <a
-            href="https://discord.gg/NSB9AsCm"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 font-mono text-sm font-medium text-amber hover:text-green-primary transition-colors duration-200"
-          >
-            <span className="text-text-dim">&gt;</span>
-            Submit Your Project on Discord &rarr;
-          </a>
-        ) : (
-          <div className="flex items-center gap-4">
-            {project.demoUrl && (
-              <a
-                href={project.demoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group/link inline-flex items-center gap-1.5 font-mono text-sm text-green-primary hover:text-amber transition-colors duration-200"
-                aria-label={`View demo of ${project.name}`}
-              >
-                <ExternalLink className="h-4 w-4 transition-transform duration-200 group-hover/link:scale-110" aria-hidden="true" />
-                Demo
-              </a>
-            )}
-            {project.repoUrl && (
-              <a
-                href={project.repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group/link inline-flex items-center gap-1.5 font-mono text-sm text-green-primary hover:text-amber transition-colors duration-200"
-                aria-label={`View source code of ${project.name}`}
-              >
-                <Github className="h-4 w-4 transition-transform duration-200 group-hover/link:scale-110" aria-hidden="true" />
-                Repo
-              </a>
+export function ProjectCard({ project, variant = "default" }: ProjectCardProps) {
+  if (variant === "compact") {
+    return (
+      <Link href={`/projects/${project.id}`} className="block group">
+        <div className="border border-border-default bg-bg-card rounded-lg p-4 hover:border-green-primary/30 transition-all duration-200 hover:-translate-y-0.5">
+          <div className="flex items-start justify-between mb-2">
+            <h4 className="font-mono text-sm font-semibold text-green-primary group-hover:text-amber line-clamp-1">
+              {project.name}
+            </h4>
+            {project.seeking_contributors && (
+              <span className="text-[8px] px-1.5 py-0.5 bg-green-primary/10 text-green-primary rounded-full flex items-center gap-1">
+                <Users className="h-2.5 w-2.5" />
+                Help wanted
+              </span>
             )}
           </div>
-        )}
-
-        {/* Built with Claude Code badge */}
-        {!isPlaceholder && (
-          <div className="mt-4 border-t border-border-default pt-3">
-            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-text-dim">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-primary" />
-              Built with Claude Code
+          <p className="text-xs text-text-secondary line-clamp-2 mb-2">
+            {project.description}
+          </p>
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono text-text-dim">
+              by {project.builder} {project.year && `· ${project.year}`}
             </span>
+            <ChevronRight className="h-3 w-3 text-green-primary group-hover:translate-x-0.5 transition-transform" />
           </div>
-        )}
+        </div>
+      </Link>
+    );
+  }
+
+  // Default variant
+  return (
+    <Link href={`/projects/${project.id}`} className="block group h-full">
+      <div className={cn(
+        "h-full border border-border-default bg-bg-card rounded-lg overflow-hidden",
+        "hover:border-green-primary/30 hover:-translate-y-1 transition-all duration-200",
+        "hover:shadow-[0_8px_30px_rgba(0,255,65,0.12)]"
+      )}>
+        {/* Top accent bar */}
+        <div className={cn(
+          "h-1.5 w-full",
+          project.status === "live" && "bg-green-500",
+          project.status === "in-development" && "bg-amber-500",
+          project.status === "completed" && "bg-purple-500",
+          !project.status && "bg-border-default"
+        )} />
+
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="font-mono text-xl font-bold text-green-primary group-hover:text-amber line-clamp-1">
+              {project.name}
+            </h3>
+            {project.status && (
+              <Badge variant="default" className={cn("text-xs px-3 py-1", statusColors[project.status])}>
+                {statusLabels[project.status]}
+              </Badge>
+            )}
+          </div>
+
+          {/* Builder and year */}
+          <p className="text-sm font-mono text-text-dim mb-4">
+            by {project.builder} {project.year && `· ${project.year}`}
+          </p>
+
+          {/* Description */}
+          <p className="text-base text-text-secondary mb-5 line-clamp-3">
+            {project.description}
+          </p>
+
+          {/* Tech stack */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            {project.stack.slice(0, 4).map((tech) => (
+              <span
+                key={tech}
+                className="px-3 py-1 text-xs font-mono bg-bg-secondary/50 text-text-dim rounded-full border border-border-default"
+              >
+                {tech}
+              </span>
+            ))}
+            {project.stack.length > 4 && (
+              <span className="px-3 py-1 text-xs font-mono text-text-dim">
+                +{project.stack.length - 4}
+              </span>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-4 border-t border-border-default">
+            <div className="flex items-center gap-2">
+              {/* GitHub link - using button to avoid nested anchors */}
+              {project.repo_url && (
+                <SocialLink 
+                  href={project.repo_url} 
+                  icon={Github} 
+                  label={`${project.name} on GitHub`} 
+                />
+              )}
+              
+              {/* Demo link if available */}
+              {project.demo_url && (
+                <SocialLink 
+                  href={project.demo_url} 
+                  icon={Globe} 
+                  label={`${project.name} demo`} 
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Seeking contributors indicator */}
+              {project.seeking_contributors && (
+                <div className="flex items-center gap-1 text-green-primary">
+                  <Users className="h-4 w-4" />
+                  <span className="text-xs font-mono hidden sm:inline">Contributors wanted</span>
+                </div>
+              )}
+              
+              {/* This is inside the Link, so it's safe */}
+              <ChevronRight className="h-5 w-5 text-green-primary group-hover:text-amber transition-colors group-hover:translate-x-1 duration-200" />
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }

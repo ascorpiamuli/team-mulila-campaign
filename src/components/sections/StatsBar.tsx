@@ -24,25 +24,25 @@ interface Stat {
 
 const stats: Stat[] = [
   { 
-    target: 5, 
+    target: 3, 
     suffix: "+", 
     label: "Years Experience",
     icon: Briefcase
   },
   { 
-    target: 30, 
+    target: 8, 
     suffix: "+", 
     label: "Projects Completed",
     icon: Code2
   },
   { 
-    target: 15, 
+    target: 4, 
     suffix: "+", 
     label: "Happy Clients",
     icon: Users
   },
   { 
-    target: 10, 
+    target: 12, 
     suffix: "+", 
     label: "Technologies Mastered",
     icon: Award
