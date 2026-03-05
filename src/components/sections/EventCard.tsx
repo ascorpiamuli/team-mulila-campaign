@@ -1,41 +1,13 @@
+// components/sections/EventCard.tsx
 "use client";
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { Calendar, MapPin, Clock, Tag, Users, Video, Globe, ChevronRight } from "lucide-react";
-
-interface Event {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  full_description?: string;
-  event_type: string;
-  status: "upcoming" | "ongoing" | "completed" | "cancelled" | "postponed";
-  start_date: string;
-  end_date: string;
-  timezone?: string;
-  is_virtual: boolean;
-  venue_name?: string;
-  venue_address?: string;
-  venue_city?: string;
-  venue_country?: string;
-  online_platform?: string;
-  meeting_link?: string;
-  organizer_name: string;
-  organizer_email?: string;
-  speakers?: any;
-  max_attendees?: number;
-  current_attendees?: number;
-  tags?: string[];
-  is_featured?: boolean;
-  registration_url?: string;
-  requires_registration?: boolean;
-}
+import { Calendar, MapPin, Clock, Tag, Users, Video, ChevronRight } from "lucide-react";
 
 interface EventCardProps {
-  event: Event;
+  event: AppEvent;
   variant?: "default" | "compact" | "featured";
 }
 
@@ -290,7 +262,7 @@ export function EventCard({ event, variant = "default" }: EventCardProps) {
           <div className="mb-4 flex items-center gap-2">
             <Tag className="h-3.5 w-3.5 text-text-dim shrink-0" />
             <span className="font-mono text-xs uppercase tracking-wider text-text-dim">
-              {event.event_type.replace('-', ' ')}
+              {event.event_type ? event.event_type.replace('-', ' ') : 'event'}
             </span>
           </div>
 
