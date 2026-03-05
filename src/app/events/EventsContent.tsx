@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { events } from "@/data/events";
 import { EventCard } from "@/components/sections/EventCard";
 import { TerminalWindow, ScrollReveal, CommandPrefix } from "@/components/terminal";
 import { BreadcrumbSchema } from "@/components/schema/BreadcrumbSchema";
 import { cn } from "@/lib/utils";
+import { useUpcomingEvents } from "@/hooks/useEvents";
 
 type FilterKey = "all" | "upcoming" | "past" | "nairobi" | "mombasa";
 
@@ -17,26 +17,12 @@ const filters: { key: FilterKey; label: string }[] = [
   { key: "mombasa", label: "Mombasa" },
 ];
 
-function filterEvents(key: FilterKey) {
-  switch (key) {
-    case "upcoming":
-      return events.filter(
-        (e) => e.status === "upcoming" || e.status === "registration-open"
-      );
-    case "past":
-      return events.filter((e) => e.status === "completed");
-    case "nairobi":
-      return events.filter((e) => e.city === "Nairobi");
-    case "mombasa":
-      return events.filter((e) => e.city === "Mombasa");
-    default:
-      return events;
-  }
-}
-
 export function EventsContent() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
-  const filtered = filterEvents(activeFilter);
+  const { events: upcomingEvents, loading } = useUpcomingEvents();
+
+  // For now, just use upcoming events
+  const events = upcomingEvents;
 
   return (
     <main className="min-h-screen bg-bg-primary px-4 py-16 sm:px-6 lg:px-8">
@@ -64,7 +50,7 @@ export function EventsContent() {
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
                 className={cn(
-                  "shrink-0 border px-4 py-2 font-mono text-sm transition-all duration-200",
+                  "shrink-0 border px-4 py-2 font-mono text-sm transition-all duration-200 rounded-lg",
                   activeFilter === filter.key
                     ? "border-green-primary text-green-primary bg-green-primary/10"
                     : "border-border-default text-text-dim hover:border-border-hover hover:text-text-secondary"
@@ -78,13 +64,17 @@ export function EventsContent() {
         </ScrollReveal>
 
         {/* Events grid */}
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-primary border-t-transparent" />
+          </div>
+        ) : events.length > 0 ? (
           <ScrollReveal
             stagger={100}
             className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
           >
-            {filtered.map((event) => (
-              <EventCard key={event.slug} event={event} />
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
             ))}
           </ScrollReveal>
         ) : (
@@ -92,7 +82,7 @@ export function EventsContent() {
             <TerminalWindow title="search-results" variant="command">
               <p className="text-text-dim">
                 <CommandPrefix symbol=">" />
-                No events found for this filter.
+                No events found.
               </p>
             </TerminalWindow>
           </ScrollReveal>
