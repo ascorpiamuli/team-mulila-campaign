@@ -3,18 +3,18 @@ import { BreadcrumbSchema } from "@/components/schema/BreadcrumbSchema";
 import { EventsContent } from "./EventsContent";
 
 export const metadata: Metadata = {
-  title: "Events | Claude Community Kenya",
+  title: "Events | Stephen Ascorpi's Portfolio",
   description:
-    "Claude developer meetups, workshops, and career talks in Nairobi and Mombasa. Join Kenya's official Claude community events.",
+    "Developer meetups, workshops, and career talks in Nairobi and Mombasa..",
   alternates: {
-    canonical: "https://www.claudekenya.org/events",
+    canonical: "https://ascorpi.cloud/events",
   },
   openGraph: {
-    title: "Events | Claude Community Kenya",
+    title: "Events | Portfolio",
     description:
-      "Claude developer meetups, workshops, and career talks in Nairobi and Mombasa. Join Kenya's official Claude community events.",
-    url: "https://www.claudekenya.org/events",
-    siteName: "Claude Community Kenya",
+      "Developer meetups, workshops, and career talks in Nairobi and Mombasa.",
+    url: "https://ascorpi.cloud/events",
+    siteName: "Stephen Ascorpi's Portfolio",
     type: "website",
   },
 };

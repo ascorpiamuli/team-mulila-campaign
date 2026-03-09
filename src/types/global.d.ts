@@ -345,7 +345,7 @@ interface FAQ {
 type ResourceType = "article" | "tutorial" | "video" | "ebook" | "whitepaper" | "case_study" | "template" | "tool" | "code_snippet" | "documentation" | "cheat_sheet" | "course" | "guide";
 type SkillLevel = "beginner" | "intermediate" | "advanced" | "all";
 
-interface Resource {
+interface ResourceBase {
   id: string;
   title: string;
   slug: string;
@@ -400,6 +400,50 @@ interface Resource {
   meta_keywords?: string[];
   additional_data?: Record<string, any>;
   author?: TeamMember;
+}
+// types/resources.ts
+ interface Resource extends ResourceBase {
+  id: string;
+  title: string;
+  icon?: string;
+  image?: string;
+  time?: string;
+  href: string;
+  description?: string | null;
+  difficulty?: string | null;
+  tags?: string[] | null;
+  reading_time?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  category_id?: string | null;
+  display_order?: number | null;
+  is_published?: boolean | null;
+  content?: any;
+  categories?: Category | Category[] | null;
+}
+
+ interface Category {
+  id: string;
+  title: string;
+  icon: string;
+  color: string;
+  description?: string | null;
+  display_order?: number | null;
+  resources?: Resource[] | null;
+}
+
+interface ResourceWithCategory extends Resource {
+  categories: Category;
+}
+
+interface Category {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  color: string;
+  display_order: number;
+  resources: Resource[];
 }
 
 // ============================================

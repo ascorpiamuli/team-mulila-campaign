@@ -53,6 +53,7 @@ services:
     stdin_open: true
     tty: true
     command: sh -c "npm install && npm run dev"
+# read - Read configuration
 
   frontend:
     build:
