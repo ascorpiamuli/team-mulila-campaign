@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { X, Phone, AlertCircle, Key, Clock, Shield } from "lucide-react";
 import { supabase } from "../../lib/supabase/client";
 import { PhoneValidator } from "@/lib/phone-validator";
-import { DeviceFingerprint } from "@/lib/device-fingerprint";
 
 interface OTPVerificationModalProps {
   isOpen: boolean;
   phoneNumber: string;
   email: string;
+  deviceFingerprint: string;
   onClose: () => void;
   onVerified: () => void;
 }
@@ -18,6 +18,7 @@ export default function OTPVerificationModal({
   isOpen,
   phoneNumber,
   email,
+  deviceFingerprint,
   onClose,
   onVerified
 }: OTPVerificationModalProps) {
@@ -29,51 +30,58 @@ export default function OTPVerificationModal({
   const [remainingAttempts, setRemainingAttempts] = useState(3);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState(0);
-  const [deviceFingerprint, setDeviceFingerprint] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const phoneValidator = PhoneValidator.getInstance()
-  const deviceFingerprinter = DeviceFingerprint.getInstance()
+  const phoneValidator = PhoneValidator.getInstance();
 
+  // Send OTP when modal opens
   useEffect(() => {
-    if (isOpen) {
-      const init = async () => {
-        const fingerprint = await deviceFingerprinter.generateFingerprint()
-        setDeviceFingerprint(fingerprint)
-        sendOTP()
-      }
-      init()
-      setOtp(["", "", "", "", "", ""])
-      setError("")
+    if (isOpen && !isInitialized) {
+      setIsInitialized(true);
+      setOtp(["", "", "", "", "", ""]);
+      setError("");
+      sendOTP();
     }
-  }, [isOpen])
+  }, [isOpen, isInitialized]);
 
   const sendOTP = async () => {
-    const phoneCheck = phoneValidator.trackPhoneAttempt(phoneNumber)
+    const phoneCheck = phoneValidator.trackPhoneAttempt(phoneNumber);
     if (!phoneCheck.allowed) {
-      setError(`Too many attempts with this phone number. Please try again in ${phoneCheck.waitTime} hours.`)
-      setIsLocked(true)
-      setLockoutTime(phoneCheck.waitTime * 3600000)
-      return
+      setError(`Too many attempts with this phone number. Please try again in ${phoneCheck.waitTime} minutes.`);
+      setIsLocked(true);
+      setLockoutTime(phoneCheck.waitTime * 60000);
+      return;
     }
 
     setIsLoading(true);
     setError("");
 
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('send-otp', {
+      console.log("📤 Sending OTP request...");
+
+      const response = await supabase.functions.invoke('send-otp', {
         body: JSON.stringify({
           phone: phoneNumber,
           email: email,
-          deviceFingerprint: deviceFingerprint
+          deviceFingerprint: deviceFingerprint || "unknown"
         })
-      })
+      });
 
-      if (functionError) throw new Error(functionError.message)
+      console.log("📨 Send OTP Response:", response);
 
-      if (data.success) {
+      // IMPORTANT: Supabase returns errors in `error` object, NOT in `data`
+      if (response.error) {
+        console.error("Function error:", response.error);
+        setError(response.error.message || "Failed to send verification code. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check response data
+      if (response.data && response.data.success) {
         setCanResend(false);
         setTimeLeft(60);
-        setRemainingAttempts(data.remainingAttempts || 3)
+        setRemainingAttempts(response.data.remainingAttempts || 3);
 
         const timer = setInterval(() => {
           setTimeLeft(prev => {
@@ -85,12 +93,17 @@ export default function OTPVerificationModal({
             return prev - 1;
           });
         }, 1000);
+      } else if (response.data && response.data.error) {
+        // This handles the case where edge function returns 200 but with error flag
+        const errorMessage = response.data.message || response.data.error;
+        setError(errorMessage || "Failed to send verification code. Please try again.");
       } else {
-        throw new Error(data.error || "Failed to send OTP")
+        setError("Failed to send verification code. Please try again.");
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send OTP. Please try again.");
+      console.error("Send OTP error:", err);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -108,34 +121,57 @@ export default function OTPVerificationModal({
     setError("");
 
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('verify-otp', {
+      console.log("🔐 Verifying OTP...");
+
+      const response = await supabase.functions.invoke('verify-otp', {
         body: JSON.stringify({
           phone: phoneNumber,
           email: email,
           otp: enteredOTP,
-          deviceFingerprint: deviceFingerprint
+          deviceFingerprint: deviceFingerprint || "unknown"
         })
-      })
+      });
 
-      if (functionError) throw new Error(functionError.message)
+      console.log("📨 Verify OTP Response:", response);
 
-      if (data.success) {
+      // IMPORTANT: Supabase returns errors in `error` object
+      if (response.error) {
+        console.error("Function error:", response.error);
+
+        // Try to parse the error message from the response
+        let errorMessage = "Verification failed. Please try again.";
+
+        setError(errorMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check response data
+      if (response.data && response.data.success) {
+        // Reset phone attempts on successful verification
+        phoneValidator.resetPhoneAttempts(phoneNumber);
         onVerified();
         onClose();
-      } else {
-        setRemainingAttempts(data.remainingAttempts || 1)
+      } else if (response.data && response.data.error) {
+        // Display the exact error message from the edge function
+        const remaining = response.data.remainingAttempts;
+        setRemainingAttempts(remaining !== undefined ? remaining : 1);
 
-        if (data.remainingAttempts === 0) {
-          setIsLocked(true)
-          setLockoutTime(3600000)
-          setError("Too many failed attempts. Please try again in 1 hour.")
-        } else {
-          setError(data.error || "Invalid OTP")
+        // Show the actual message from the edge function
+        const errorMessage = response.data.message || response.data.error;
+        setError(errorMessage);
+
+        if (remaining === 0) {
+          setIsLocked(true);
+          setLockoutTime(3600000);
         }
+      } else {
+        setError("Verification failed. Please try again.");
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
+      console.error("Verify OTP error:", err);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -167,16 +203,23 @@ export default function OTPVerificationModal({
       const timer = setInterval(() => {
         setLockoutTime(prev => {
           if (prev <= 1000) {
-            setIsLocked(false)
-            setRemainingAttempts(3)
-            return 0
+            setIsLocked(false);
+            setRemainingAttempts(3);
+            return 0;
           }
-          return prev - 1000
-        })
-      }, 1000)
-      return () => clearInterval(timer)
+          return prev - 1000;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
     }
-  }, [isLocked, lockoutTime])
+  }, [isLocked, lockoutTime]);
+
+  // Reset initialization when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsInitialized(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -1,6 +1,7 @@
 import { supabase } from './client'
 import { getClientIP, getIPDetails } from '../../src/lib/ip.service'
 
+// In src/lib/supabase/functions.ts
 interface RegisterSupporterData {
   fullName: string
   email: string
@@ -16,6 +17,7 @@ interface RegisterSupporterData {
   keyPresses: number
   timeSpent: number
   securityReport: any
+  deviceFingerprint?: string  // ADD THIS
 }
 
 /**

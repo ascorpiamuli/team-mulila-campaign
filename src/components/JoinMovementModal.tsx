@@ -16,10 +16,12 @@ import {
 import { registerSupporter } from "../../lib/supabase/functions";
 import { useToast } from "../components/ui/Toast";
 import OTPVerificationModal from './OTPVerificationModal';
+import { DeviceFingerprint } from '../lib/device-fingerprint';
 
 interface JoinMovementModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRegistrationSuccess?: () => void; // Add callback for successful registration
 }
 
 interface ConstituencyOption {
@@ -34,7 +36,7 @@ interface WardOption {
   constituency: string;
 }
 
-export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModalProps) {
+export default function JoinMovementModal({ isOpen, onClose, onRegistrationSuccess }: JoinMovementModalProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -43,6 +45,8 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
   const [pendingPhone, setPendingPhone] = useState("");
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [registrationData, setRegistrationData] = useState<any>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
 
   // Initialize with empty values - NO PREFILLING
   const [formData, setFormData] = useState({
@@ -78,6 +82,18 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
   const clicksRef = useRef<number>(0);
   const keyPressesRef = useRef<number>(0);
   const formInitializedRef = useRef<boolean>(false);
+  const toastShownRef = useRef<boolean>(false);
+
+  // Generate device fingerprint on mount
+  useEffect(() => {
+    const generateFingerprint = async () => {
+      const fingerprint = DeviceFingerprint.getInstance();
+      const fp = await fingerprint.generateFingerprint();
+      setDeviceFingerprint(fp);
+      console.log("🔐 Device fingerprint generated:", fp.substring(0, 20) + "...");
+    };
+    generateFingerprint();
+  }, []);
 
   // Load Kenya locations data on mount
   useEffect(() => {
@@ -238,7 +254,7 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
       return false;
     }
     if (!formData.fullName || formData.fullName.length < 3) {
-      showToast("Please enter your full name (minimum 3 characters)", "error");
+      showToast("Please enter your full name", "error");
       return false;
     }
     if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -246,17 +262,16 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
       return false;
     }
     if (!formData.phone || formData.phone.length < 10) {
-      showToast("Please enter a valid phone number (minimum 10 digits)", "error");
+      showToast("Please enter a valid phone number", "error");
       return false;
     }
-    // Validate Kenyan phone number format
     const kenyanPhoneRegex = /^(07|01|02)[0-9]{8}$/;
     if (!kenyanPhoneRegex.test(formData.phone)) {
-      showToast("Please enter a valid Kenyan phone number (e.g., 0712345678)", "error");
+      showToast("Please enter a valid Kenyan phone number", "error");
       return false;
     }
     if (!formData.idNumber || formData.idNumber.length < 6) {
-      showToast("Please enter a valid ID number (minimum 6 digits)", "error");
+      showToast("Please enter a valid ID number", "error");
       return false;
     }
     if (!formData.constituency) {
@@ -268,7 +283,7 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
       return false;
     }
     if (!isHuman) {
-      showToast("Please interact with the form naturally (move mouse, type, etc.)", "warning");
+      showToast("Please interact with the form to verify you're human", "warning");
       return false;
     }
     return true;
@@ -282,7 +297,6 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
   const submitRegistration = async () => {
     setIsSubmitting(true);
     setVerificationStatus("verifying");
-    showToast("Verifying your information...", "info");
 
     try {
       const finalBotCheck = await clientTrace.detectBot();
@@ -291,7 +305,7 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
       if (finalBotCheck?.botLikely || finalNetworkCheck?.tampered) {
         setVerificationStatus("error");
         setIsSubmitting(false);
-        showToast("Security verification failed. Please try again.", "error");
+        showToast("Registration failed. Please try again.", "error");
         return;
       }
 
@@ -309,17 +323,32 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
         clicks: clicksRef.current,
         keyPresses: keyPressesRef.current,
         timeSpent: Math.floor((Date.now() - startTimeRef.current) / 1000),
-        securityReport: securityReport
+        securityReport: securityReport,
+        deviceFingerprint: deviceFingerprint
       });
 
       if (result.success) {
         setVerificationStatus("success");
 
-        // Show detailed success message
-        const successMessage = result.data?.message ||
-          `Welcome to Team Mulila, ${result.data?.fullName || formData.fullName}! You've joined as a supporter in ${result.data?.constituency || formData.constituency}.`;
+        // Show single success toast only once
+        if (!toastShownRef.current) {
+          toastShownRef.current = true;
+          showToast("Successfully joined Team Mulila! Welcome aboard! 🎉", "success");
+        }
 
-        showToast(successMessage, "success");
+        // Call the success callback to refresh parent component data
+        if (onRegistrationSuccess) {
+          onRegistrationSuccess();
+        }
+
+        // Force a hard refresh of the page to update all counters
+        setTimeout(() => {
+          // Option 1: Soft refresh - reload the page
+          window.location.reload();
+
+          // Option 2: Or just refresh the counter by calling the callback
+          // The parent component will handle the refresh
+        }, 1500);
 
         setTimeout(() => {
           setFormData({
@@ -333,31 +362,19 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
           });
           setVerificationStatus("idle");
           setIsPhoneVerified(false);
+          toastShownRef.current = false;
           onClose();
-        }, 3000);
+        }, 2000);
       } else {
-        // Handle specific error types from the API
-        const errorMessage = result.error || "Registration failed";
-
-        if (result.error === "Email already registered") {
-          showToast(`Email ${formData.email} is already registered. Please use a different email or contact support.`, "error");
-        } else if (result.error === "Phone number already registered") {
-          showToast(`Phone number ${formData.phone} is already registered. Please use a different number.`, "error");
-        } else if (result.error === "ID number already registered") {
-          showToast(`This ID number is already registered. Please contact support if this is an error.`, "error");
-        } else if (result.missingFields) {
-          showToast(`Missing required fields: ${result.missingFields.join(", ")}`, "error");
-        } else {
-          showToast(errorMessage, "error");
-        }
-
-        throw new Error(errorMessage);
+        // Generic error - no details exposed
+        setVerificationStatus("error");
+        showToast("Registration failed. Please try again.", "error");
       }
 
     } catch (error) {
       console.error("Submission failed:", error);
       setVerificationStatus("error");
-      setTimeout(() => setVerificationStatus("idle"), 3000);
+      showToast("Registration failed. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -370,10 +387,7 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
       return;
     }
 
-    // Store form data for later
     setRegistrationData(formData);
-
-    // Open OTP verification modal with email
     setPendingPhone(formData.phone);
     setShowOTPModal(true);
   };
@@ -642,7 +656,7 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
                 <AlertCircle className="h-4 w-4 text-red-400" />
                 <p className="text-xs text-red-400">
-                  Registration failed. Please check your information and try again.
+                  Registration failed. Please try again.
                 </p>
               </div>
             )}
@@ -686,10 +700,11 @@ export default function JoinMovementModal({ isOpen, onClose }: JoinMovementModal
         </div>
       </div>
 
-      {/* OTP Verification Modal - FIXED: Added email prop */}
+      {/* OTP Verification Modal */}
       <OTPVerificationModal
         isOpen={showOTPModal}
         phoneNumber={pendingPhone}
+        deviceFingerprint={deviceFingerprint}  // ADD THIS LINE - pass the fingerprint
         email={formData.email}
         onClose={() => {
           setShowOTPModal(false);
