@@ -44,7 +44,7 @@ jobs:
             cd ${{ secrets.APP_DIR }}
 
             echo "📦 Pulling latest image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/mulila_governor:latest
 
             echo "🛑 Stopping existing container..."
             docker compose down || true

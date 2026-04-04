@@ -650,26 +650,6 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                 </p>
               )}
             </div>
-
-            {/* Verification Status Message */}
-            {verificationStatus === "error" && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                <AlertCircle className="h-4 w-4 text-red-400" />
-                <p className="text-xs text-red-400">
-                  Registration failed. Please try again.
-                </p>
-              </div>
-            )}
-
-            {verificationStatus === "success" && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                <CheckCircle className="h-4 w-4 text-green-400" />
-                <p className="text-xs text-green-400">
-                  Successfully joined Team Mulila! Welcome aboard! 🎉
-                </p>
-              </div>
-            )}
-
             {/* Submit Button */}
             <button
               type="submit"
