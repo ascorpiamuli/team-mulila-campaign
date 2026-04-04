@@ -30,18 +30,6 @@ export default function PrivacyPolicyPage() {
         </button>
 
         <Card className="p-6 md:p-8 lg:p-10">
-          {/* Data Protection Partner Logo */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-3 bg-bg-dark/50 rounded-lg px-4 py-2 border border-gold/20">
-              <Building className="h-5 w-5 text-gold" />
-              <span className="text-xs text-text-dim">Data Protected by</span>
-              <img
-                src="https://backoffice.pasbestventures.com/storage/uploads/logo/6-logo-dark.png?1775304496"
-                alt="Pasbest Ventures Ltd"
-                className="h-30 object-contain"
-              />
-            </div>
-          </div>
 
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gold/20 mb-4">
