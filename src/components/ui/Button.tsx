@@ -18,13 +18,13 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center gap-2 border px-5 py-2.5 font-mono text-sm font-medium transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center gap-2 border px-5 py-2.5 font-mono text-sm font-medium transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-dark disabled:cursor-not-allowed disabled:opacity-50";
 
   const variants = {
     primary:
-      "border-green-primary text-green-primary hover:bg-green-primary hover:text-bg-primary focus-visible:ring-green-primary",
+      "border-gold text-gold hover:bg-gold hover:text-bg-dark focus-visible:ring-gold",
     secondary:
-      "border-amber text-amber hover:bg-amber hover:text-bg-primary focus-visible:ring-amber",
+      "border-gold-dark text-gold-light hover:bg-gold-dark hover:text-bg-dark focus-visible:ring-gold-dark",
   };
 
   return (
@@ -38,7 +38,7 @@ export function Button({
       {loading ? (
         <span className="inline-flex items-center gap-1">
           Processing
-          <span className="cursor-blink" aria-hidden="true">▊</span>
+          <span className="animate-pulse" aria-hidden="true">▊</span>
         </span>
       ) : (
         children

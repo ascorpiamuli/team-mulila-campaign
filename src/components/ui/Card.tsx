@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -25,18 +27,17 @@ export function Card({
   return (
     <div
       className={cn(
-        "border border-border-default bg-bg-card transition-all duration-300 hover:-translate-y-0.5 hover:border-border-hover hover:shadow-[0_0_20px_rgba(0,255,65,0.08)]",
+        "border border-gold/20 bg-bg-card transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/50",
         className
       )}
     >
-      {/* Title bar */}
       {(showDots || title) && (
-        <div className="flex items-center gap-2 border-b border-border-default px-4 py-2.5">
+        <div className="flex items-center gap-2 border-b border-gold/20 px-4 py-2.5">
           {showDots && (
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber" />
-              <span className="h-2.5 w-2.5 rounded-full bg-green-primary" />
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-gold" />
             </div>
           )}
           {title && (
@@ -47,7 +48,6 @@ export function Card({
         </div>
       )}
 
-      {/* Content */}
       <div className={paddingMap[padding]}>{children}</div>
     </div>
   );

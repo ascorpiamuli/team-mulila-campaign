@@ -1,147 +1,122 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { LoadingBar } from "@/components/terminal/LoadingBar";
-import { EasterEggs } from "@/components/EasterEggs";
-import { PageTransition } from "@/components/layout/PageTransition";
+import {
+  Inter,
+  Playfair_Display,
+  Montserrat,
+  Poppins,
+  DM_Sans,
+  Space_Grotesk,
+  Plus_Jakarta_Sans,
+  Cabin,
+  Manrope,
+  Outfit
+} from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
+import { ToastProvider } from "@/components/ui/Toast";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+// Primary Fonts
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex-sans",
+const playfair = Playfair_Display({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+// Secondary/Utility Fonts
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
+const cabin = Cabin({
+  subsets: ["latin"],
+  variable: "--font-cabin",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.claudekenya.org"),
-  title: {
-    default: "Claude Community Kenya",
-    template: "%s | Claude Community Kenya",
-  },
-  description:
-    "Kenya's official Anthropic developer community — building, learning, and shipping with Claude.",
-  keywords: [
-    "Claude",
-    "Anthropic",
-    "AI",
-    "Kenya",
-    "Developer Community",
-    "Machine Learning",
-    "Nairobi",
-  ],
-  authors: [{ name: "Claude Community Kenya" }],
-  icons: {
-    icon: [
-      { url: "/favicon.ico" },
-      { url: "/images/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/images/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/images/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
-    ],
-    apple: [
-      { url: "/images/favicon/apple-icon.png" },
-      { url: "/images/favicon/apple-icon-57x57.png", sizes: "57x57" },
-      { url: "/images/favicon/apple-icon-60x60.png", sizes: "60x60" },
-      { url: "/images/favicon/apple-icon-72x72.png", sizes: "72x72" },
-      { url: "/images/favicon/apple-icon-76x76.png", sizes: "76x76" },
-      { url: "/images/favicon/apple-icon-114x114.png", sizes: "114x114" },
-      { url: "/images/favicon/apple-icon-120x120.png", sizes: "120x120" },
-      { url: "/images/favicon/apple-icon-144x144.png", sizes: "144x144" },
-      { url: "/images/favicon/apple-icon-152x152.png", sizes: "152x152" },
-      { url: "/images/favicon/apple-icon-180x180.png", sizes: "180x180" },
-    ],
-    other: [
-      { rel: "msapplication-TileImage", url: "/images/favicon/ms-icon-144x144.png" },
-    ],
-  },
+  title: "Hon. Nicholas Mulla - Governor 2027 | Working Today, Building Tomorrow",
+  description: "A leader, not just a politician. Join the movement for real change in Kitui County.",
+  keywords: "Nicholas Mulla, Kitui Governor, Kitui County, Governor 2027, Leadership, Change Makers, Kenya Politics",
+  authors: [{ name: "Team Mulla" }],
   openGraph: {
-    title: "Claude Community Kenya",
-    description:
-      "Kenya's official Anthropic developer community — building, learning, and shipping with Claude.",
-    url: "https://www.claudekenya.org",
-    siteName: "Claude Community Kenya",
-    locale: "en_KE",
+    title: "Hon. Nicholas Mulla - Governor 2027",
+    description: "Working Today, Building Tomorrow. Join the movement for real change in Kitui County.",
     type: "website",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Claude Community Kenya",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Claude Community Kenya",
-    description:
-      "Kenya's official Anthropic developer community — building, learning, and shipping with Claude.",
-    images: ["/og-image.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
+    locale: "en_KE",
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Claude Community Kenya",
-  url: "https://www.claudekenya.org",
-  logo: "https://www.claudekenya.org/logo.svg",
-  description:
-    "Kenya's official Anthropic developer community — building, learning, and shipping with Claude.",
-  sameAs: [
-    "https://twitter.com/ClaudeCommunityKE",
-    "https://github.com/claude-community-kenya",
-    "https://discord.gg/NSB9AsCm",
-    "https://linkedin.com/company/claude-community-kenya",
-  ],
-  contactPoint: {
-    "@type": "ContactPoint",
-    email: "claudecommunitykenya@gmail.com",
-    contactType: "general",
-  },
-  areaServed: {
-    "@type": "Country",
-    name: "Kenya",
-  },
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body
-        className={`${jetbrainsMono.variable} ${ibmPlexSans.variable} antialiased`}
-      >
-        <a href="#main-content" className="skip-nav">
-          Skip to main content
-        </a>
-        <Navbar />
-        <LoadingBar />
-        <main id="main-content">
-          <PageTransition>{children}</PageTransition>
-        </main>
-        <Footer />
-        <EasterEggs />
+      <body className={`
+        ${inter.variable}
+        ${playfair.variable}
+        ${montserrat.variable}
+        ${poppins.variable}
+        ${dmSans.variable}
+        ${spaceGrotesk.variable}
+        ${plusJakarta.variable}
+        ${cabin.variable}
+        ${manrope.variable}
+        ${outfit.variable}
+        bg-bg-dark
+        font-sans
+        antialiased
+      `}>
+        <ToastProvider>
+          <Navbar />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

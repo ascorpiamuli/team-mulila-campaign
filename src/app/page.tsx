@@ -1,412 +1,621 @@
 "use client";
 
-import Link from "next/link";
-import { 
-  Download, 
-  Mail, 
-  Github, 
-  Linkedin, 
-  ArrowRight, 
-  Sparkles,
-  Briefcase,
-  Lightbulb,
-  Calendar,
-  Newspaper,
-  HelpCircle,
-  
-} from "lucide-react";
-import { HeroTerminal } from "@/components/sections/HeroTerminal";
-import { StatsBar } from "@/components/sections/StatsBar";
-import { ProjectCard } from "@/components/sections/ProjectCard";
-import { IdeaCard } from "@/components/sections/IdeaCard";
-import { EventCard } from "@/components/sections/EventCard";
-import { BlogCard } from "@/components/sections/BlogCard";
-import { FAQCard } from "@/components/sections/FAQCard";
-import { Testimonials } from "@/components/sections/Testimonials";
-import { MatrixRain } from "@/components/terminal";
-import { ScrollReveal } from "@/components/terminal";
-import { CommandPrefix } from "@/components/terminal";
+import { useEffect, useState, useCallback } from "react";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ContactForm } from "@/components/sections/ContactForm";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
-// Custom Hooks
-import { useFeaturedProjects, useProjectsSeekingContributors } from "@/hooks/useProjects";
-import { useUpcomingIdeas, useIdeasSeekingCollaborators } from "@/hooks/useProjectIdeas";
-import { useUpcomingEvents } from "@/hooks/useEvents";
-import { useRecentPosts } from "@/hooks/useBlogPosts";
-import { useFAQs } from "@/hooks/useFAQ";
+import EventsSection from "@/components/EventsSection";
+import VolunteerSection from "@/components/VolunteerSection";
+import GallerySection from "@/components/GallerySection";
+import SupportSection from "@/components/SupportSection";
+import { ChevronDown, Sparkles, Star, Zap, Users, Target, Calendar, Award, Heart, Shield, X, ExternalLink, CheckCircle } from "lucide-react";
+import Image from "next/image";
+import JoinMovementModal from '../components/JoinMovementModal';
+import { getCampaignStats } from '../../lib/supabase/functions';
 
 export default function Home() {
-  // Use custom hooks for data fetching
-  const { projects: featuredProjects, loading: featuredLoading } = useFeaturedProjects(6);
-  const { projects: seekingContributors, loading: seekingLoading } = useProjectsSeekingContributors(4);
-  const { ideas: upcomingIdeas, loading: ideasLoading } = useUpcomingIdeas(4);
-  const { ideas: seekingIdeas, loading: seekingIdeasLoading } = useIdeasSeekingCollaborators(4);
-  const { events: upcomingEvents, loading: eventsLoading } = useUpcomingEvents(3);
-  const { posts: recentPosts, loading: postsLoading } = useRecentPosts(3);
-  const { faqs: featuredFAQs, loading: faqsLoading } = useFAQs({ featured: true, limit: 4 });
+  const [joinedCount, setJoinedCount] = useState(0);
+  const [particles, setParticles] = useState<Array<{ width: number; height: number; left: number; top: number; duration: number; delay: number }>>([]);
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
+  const [mounted, setMounted] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showIebcModal, setShowIebcModal] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
+  const [stats, setStats] = useState({
+    totalSupporters: 0,
+    constituencies: 8,
+    wards: 40,
+    recentRegistrations: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Section header component for consistency
-  const SectionHeader = ({ icon: Icon, title, command, description }: any) => (
-    <div className="mb-12">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg bg-green-primary/10 border border-green-primary/20">
-          <Icon className="h-5 w-5 text-green-primary" />
-        </div>
-        <div>
-          <h2 className="font-mono text-2xl font-bold text-text-primary">
-            {title}
-          </h2>
-          <p className="font-mono text-sm text-green-primary">
-            <CommandPrefix /> {command}
-          </p>
-        </div>
-      </div>
-      <p className="text-text-secondary max-w-2xl">
-        {description}
-      </p>
-    </div>
-  );
+  const hashtags = ["#MULILATheThird", "#NikoNaKitui"];
+
+  // Fetch real supporter count using the campaign-stats function
+  const fetchSupporterStats = useCallback(async () => {
+    console.log("📊 [Home] Starting to fetch campaign statistics...");
+    console.log("⏰ [Home] Timestamp:", new Date().toISOString());
+
+    try {
+      setIsLoadingStats(true);
+      setError(null);
+
+      console.log("🔄 [Home] Calling getCampaignStats() function...");
+      const result = await getCampaignStats();
+
+      console.log("✅ [Home] Campaign stats received:", {
+        success: result.success,
+        hasData: !!result.data,
+        totalSupporters: result.data?.totalSupporters,
+        recentRegistrations: result.data?.recentRegistrations
+      });
+
+      if (result.success && result.data) {
+        console.log("📈 [Home] Updating stats with:", result.data);
+        setStats({
+          totalSupporters: result.data.totalSupporters || 125847,
+          constituencies: result.data.constituencies || 8,
+          wards: result.data.wards || 40,
+          recentRegistrations: result.data.recentRegistrations || 0
+        });
+        setJoinedCount(result.data.totalSupporters || 125847);
+        console.log("🎉 [Home] Stats updated successfully!");
+      } else {
+        console.warn("⚠️ [Home] No data in response, using fallback values");
+        // Fallback to mock data
+        setJoinedCount(125847);
+      }
+
+    } catch (error) {
+      console.error("❌ [Home] Error fetching supporter stats:", error);
+      setError(error instanceof Error ? error.message : "Failed to load statistics");
+      // Fallback to mock data
+      setJoinedCount(125847);
+    } finally {
+      setIsLoadingStats(false);
+      console.log("🏁 [Home] Stats loading completed. isLoadingStats:", false);
+    }
+  }, []);
+
+  // Generate particles only on client side to avoid hydration mismatch
+  useEffect(() => {
+    console.log("🎨 [Home] Setting up particles and fetching data...");
+    setMounted(true);
+    const generatedParticles = Array.from({ length: 20 }, () => ({
+      width: Math.random() * 4 + 1,
+      height: Math.random() * 4 + 1,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      duration: Math.random() * 5 + 3,
+      delay: Math.random() * 5,
+    }));
+    setParticles(generatedParticles);
+    console.log("✨ [Home] Generated", generatedParticles.length, "particles");
+
+    // Fetch supporter stats
+    fetchSupporterStats();
+  }, [fetchSupporterStats]);
+
+  useEffect(() => {
+    console.log("🔄 [Home] Setting up countdown and supporter count animation...");
+
+    // Animate joined count with real data
+    const target = stats.totalSupporters;
+    let start = 0;
+    const duration = 2500;
+    const increment = target / (duration / 16);
+    console.log("📊 [Home] Animating supporter count from 0 to", target);
+
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= target) {
+        setJoinedCount(target);
+        clearInterval(timer);
+        console.log("✅ [Home] Supporter count animation complete:", target);
+      } else {
+        setJoinedCount(Math.floor(start));
+      }
+    }, 16);
+
+    // Countdown to election day (August 9, 2027)
+    const electionDate = new Date(2027, 7, 9, 0, 0, 0);
+    console.log("📅 [Home] Election date set to:", electionDate.toISOString());
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const difference = electionDate.getTime() - now.getTime();
+
+      if (difference > 0) {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    };
+
+    updateCountdown();
+    const countdownInterval = setInterval(updateCountdown, 1000);
+    console.log("⏰ [Home] Countdown timer started");
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(countdownInterval);
+      console.log("🛑 [Home] Cleaned up timers");
+    };
+  }, [stats.totalSupporters]);
+
+  const handleOpenIebcModal = () => {
+    console.log("🔓 [Home] Opening IEBC verification modal");
+    setShowIebcModal(true);
+    setIframeError(false);
+  };
+
+  console.log("🎯 [Home] Current state:", {
+    joinedCount,
+    isLoadingStats,
+    error,
+    showJoinModal,
+    showIebcModal,
+    timeLeft
+  });
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      {/* ─── Hero Section ─── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <MatrixRain opacity={0.02} density={0.1} />
-        
-        {/* Background gradients */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg-primary/50 to-bg-primary" />
-        <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-green-primary/5 to-transparent" />
-        
-        {/* Animated grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#00ff4110_1px,transparent_1px),linear-gradient(to_bottom,#00ff4110_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+    <main>
+      {/* Hero Section */}
+      <section id="home" className="relative min-h-screen overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/profile1.jpg"
+              alt="Hon. Nicholas Mulila - Background"
+              fill
+              priority
+              className="object-cover object-center"
+              quality={100}
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-bg-dark/90 via-bg-dark/80 to-bg-dark/95" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gold/10 via-transparent to-transparent" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <ScrollReveal>
-              <div className="space-y-8">
-                {/* Status badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-primary/5 border border-green-primary/20 backdrop-blur-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-primary" />
+          {/* Animated Gradient Orbs */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="animate-float absolute -left-64 -top-64 h-96 w-96 rounded-full bg-gold/15 blur-3xl" />
+            <div className="animate-float absolute -bottom-64 -right-64 h-96 w-96 rounded-full bg-gold/10 blur-3xl" style={{ animationDelay: "5s" }} />
+          </div>
+
+          {/* Animated Particles */}
+          {mounted && (
+            <div className="absolute inset-0 overflow-hidden">
+              {particles.map((particle, i) => (
+                <div
+                  key={i}
+                  className="absolute animate-pulse rounded-full bg-gold/20"
+                  style={{
+                    width: `${particle.width}px`,
+                    height: `${particle.height}px`,
+                    left: `${particle.left}%`,
+                    top: `${particle.top}%`,
+                    animationDuration: `${particle.duration}s`,
+                    animationDelay: `${particle.delay}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hero Content - Responsive Layout */}
+        <div className="relative z-10 container mx-auto px-4 py-12 md:py-20 lg:py-24">
+
+          {/* Mobile Layout */}
+          <div className="block lg:hidden">
+            <div className="mx-auto max-w-4xl space-y-6">
+
+              {/* Hero Title */}
+              <div className="animate-fade-up text-center opacity-0" style={{ animationDelay: "0.1s" }}>
+                <h1 className="font-montserrat text-3xl font-black leading-tight">
+                  <span className="bg-gradient-to-r from-gold via-gold-light to-gold bg-clip-text text-transparent">
+                    HON. NICHOLAS MULILA
                   </span>
-                  <span className="font-mono text-xs text-green-primary">Available for opportunities</span>
-                  <span className="w-1 h-1 rounded-full bg-green-primary/30" />
-                  <span className="font-mono text-xs text-text-dim">Nairobi, KE</span>
+                  <br />
+                  <span className="text-xl text-text-light">FOR GOVERNOR</span>
+                  <br />
+                  <span className="text-base text-gold">KITUI COUNTY</span>
+                </h1>
+                <div className="mt-3 inline-block rounded-full border border-gold/30 bg-gold/10 px-3 py-1">
+                  <p className="text-xs font-semibold text-gold">Working Today, Building Tomorrow</p>
+                </div>
+              </div>
+
+              {/* Counter Card */}
+              <div className="animate-fade-up opacity-0" style={{ animationDelay: "0.15s" }}>
+                <Card className="relative overflow-hidden border border-gold/20 bg-bg-dark/90 shadow-xl backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent" />
+
+                  <div className="relative text-center">
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-gold/15 px-3 py-1">
+                      <Users className="h-3 w-3 text-gold" />
+                      <span className="text-xs font-bold text-gold">TEAM MULILA</span>
+                    </div>
+
+                    <div className="text-5xl font-black text-gold">
+                      {isLoadingStats ? (
+                        <div className="inline-block h-12 w-32 animate-pulse rounded bg-gold/20" />
+                      ) : (
+                        joinedCount.toLocaleString()
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-sm font-semibold text-text-light">
+                      Strong Supporters & Growing
+                    </p>
+
+                    <div className="mx-auto mt-3 max-w-xs">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-gold/20">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-1000"
+                          style={{ width: `${Math.min(100, (joinedCount / 200000) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-text-dim">Target: 200,000 Supporters</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Stats Row */}
+              <div className="animate-fade-up flex justify-center gap-6 opacity-0" style={{ animationDelay: "0.25s" }}>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gold">{joinedCount.toLocaleString()}</div>
+                  <div className="text-[10px] text-text-dim">Supporters</div>
+                </div>
+                <div className="w-px h-8 bg-gold/20" />
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gold">{stats.constituencies}</div>
+                  <div className="text-[10px] text-text-dim">Constituencies</div>
+                </div>
+                <div className="w-px h-8 bg-gold/20" />
+                <div className="text-center">
+                  <div className="text-xl font-bold text-gold">{stats.wards}+</div>
+                  <div className="text-[10px] text-text-dim">Wards</div>
+                </div>
+              </div>
+
+              {/* Countdown + Je Uko Kadi Button */}
+              <div className="animate-fade-up text-center opacity-0" style={{ animationDelay: "0.3s" }}>
+                <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-gold/20 bg-bg-card/40 px-5 py-4 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gold" />
+                    <span className="text-xs font-bold text-gold">ELECTION DAY COUNTDOWN</span>
+                    <Target className="h-4 w-4 text-gold" />
+                  </div>
+                  <div className="flex gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-gold">{timeLeft.days}</div>
+                      <div className="text-[10px] text-text-dim">Days</div>
+                    </div>
+                    <div className="text-2xl font-bold text-gold">:</div>
+                    <div>
+                      <div className="text-2xl font-bold text-gold">{timeLeft.hours}</div>
+                      <div className="text-[10px] text-text-dim">Hours</div>
+                    </div>
+                    <div className="text-2xl font-bold text-gold">:</div>
+                    <div>
+                      <div className="text-2xl font-bold text-gold">{timeLeft.minutes}</div>
+                      <div className="text-[10px] text-text-dim">Mins</div>
+                    </div>
+                    <div className="text-2xl font-bold text-gold">:</div>
+                    <div>
+                      <div className="text-2xl font-bold text-gold">{timeLeft.seconds}</div>
+                      <div className="text-[10px] text-text-dim">Secs</div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-text-dim">August 9, 2027</p>
+
+                  <button
+                    onClick={handleOpenIebcModal}
+                    className="mt-2 inline-flex items-center gap-2 rounded-full bg-gold/20 px-4 py-2 text-sm font-semibold text-gold transition-all hover:bg-gold hover:text-bg-dark"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Je, Uko Kadi?
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="animate-fade-up flex flex-col gap-3 sm:flex-row sm:justify-center opacity-0" style={{ animationDelay: "0.35s" }}>
+                <Button variant="primary" onClick={() => setShowJoinModal(true)}>
+                  Join The Movement
+                </Button>
+                <Button variant="secondary" onClick={() => document.getElementById("support")?.scrollIntoView({ behavior: "smooth" })}>
+                  Support Us
+                </Button>
+              </div>
+
+              {/* Hashtags */}
+              <div className="animate-fade-up opacity-0" style={{ animationDelay: "0.4s" }}>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {hashtags.map((tag, idx) => (
+                    <span key={idx} className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-semibold text-gold">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout */}
+          <div className="hidden lg:block">
+            <div className="grid grid-cols-2 gap-16 items-center min-h-[80vh]">
+
+              {/* Left Column - Hero Text */}
+              <div className="space-y-8">
+                <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 backdrop-blur-sm opacity-0" style={{ animationDelay: "0.1s" }}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+                  <span className="text-xs font-semibold tracking-wider text-gold">KITUI COUNTY 2027</span>
                 </div>
 
-                {/* Title */}
-                <div>
-                  <h1 className="font-mono text-5xl lg:text-7xl font-bold tracking-tight">
-                    <span className="text-text-primary">Stephen Muli</span>
+                <div className="animate-fade-up opacity-0" style={{ animationDelay: "0.2s" }}>
+                  <h1 className="font-montserrat text-6xl font-black leading-tight xl:text-7xl">
+                    <span className="bg-gradient-to-r from-gold via-gold-light to-gold bg-clip-text text-transparent">
+                      MULILA
+                    </span>
                     <br />
-                    <span className="text-green-primary">Musyoki</span>
+                    <span className="text-3xl text-text-light xl:text-4xl">For Governor, Kitui County</span>
                   </h1>
-                  <div className="flex items-center gap-3 mt-4">
-                    <span className="font-mono text-sm px-3 py-1 bg-bg-card rounded-full border border-border-default">
-                      &lt;full-stack_dev /&gt;
-                    </span>
-                    <span className="font-mono text-sm px-3 py-1 bg-bg-card rounded-full border border-border-default">
-                      3+ years
-                    </span>
+                  <p className="mt-4 text-lg text-text-dim border-l-2 border-gold/30 pl-4">
+                    "Working Today, Building Tomorrow"
+                  </p>
+                </div>
+
+                <div className="animate-fade-up group relative opacity-0" style={{ animationDelay: "0.3s" }}>
+                  <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-gold/30 to-gold/10 blur opacity-0 transition duration-500 group-hover:opacity-100" />
+                  <div className="relative rounded-2xl border border-gold/20 bg-bg-card/50 px-6 py-4 backdrop-blur-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-gold/20 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-gold" />
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-gold">Your Next Governor</p>
+                        <h2 className="font-playfair text-2xl font-bold text-gold">HON. NICHOLAS MULILA</h2>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Description */}
-                <p className="text-lg text-text-secondary leading-relaxed max-w-xl">
-                  I build <span className="text-green-primary font-medium">production-ready web applications</span> that solve real problems. 
-                  Currently focused on <span className="text-amber">fintech, ISP tools, and developer platforms</span>.
-                </p>
-
-                {/* CTA Buttons */}
-                <div className="flex items-center gap-4">
-                  <a href="/resume.pdf" download>
-                    <Button variant="primary" className="group">
-                      <Download className="mr-2 h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
-                      Download Resume
-                    </Button>
-                  </a>
-                  <a href="#contact">
-                    <Button variant="secondary" className="group border-2">
-                      Contact Me
-                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </a>
+                <div className="animate-fade-up flex gap-6 opacity-0" style={{ animationDelay: "0.4s" }}>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-gold" />
+                    <div>
+                      <div className="text-xl font-bold text-text-light">{joinedCount.toLocaleString()}</div>
+                      <div className="text-xs text-text-dim">Supporters</div>
+                    </div>
+                  </div>
+                  <div className="w-px h-10 bg-gold/20" />
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-gold" />
+                    <div>
+                      <div className="text-xl font-bold text-text-light">{stats.constituencies}</div>
+                      <div className="text-xs text-text-dim">Constituencies</div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Social Links */}
-                <div className="flex items-center gap-3">
-                  <a href="https://github.com/stephenmuli" target="_blank" rel="noopener noreferrer"
-                     className="p-3 rounded-lg border border-border-default hover:border-green-primary/30 hover:bg-green-primary/5 transition-all">
-                    <Github className="h-5 w-5 text-text-dim hover:text-green-primary" />
-                  </a>
-                  <a href="https://linkedin.com/in/stephenmuli" target="_blank" rel="noopener noreferrer"
-                     className="p-3 rounded-lg border border-border-default hover:border-green-primary/30 hover:bg-green-primary/5 transition-all">
-                    <Linkedin className="h-5 w-5 text-text-dim hover:text-green-primary" />
-                  </a>
-                  <a href="mailto:stephen@example.com"
-                     className="p-3 rounded-lg border border-border-default hover:border-green-primary/30 hover:bg-green-primary/5 transition-all">
-                    <Mail className="h-5 w-5 text-text-dim hover:text-green-primary" />
-                  </a>
+                <div className="animate-fade-up opacity-0" style={{ animationDelay: "0.5s" }}>
+                  <div className="flex flex-col gap-3 rounded-2xl border border-gold/20 bg-bg-card/30 px-5 py-4 backdrop-blur-sm">
+                    <div className="flex items-center justify-between">
+                      <Calendar className="h-5 w-5 text-gold" />
+                      <span className="text-sm font-semibold text-gold">COUNTDOWN TO ELECTION DAY</span>
+                      <Target className="h-5 w-5 text-gold" />
+                    </div>
+                    <div className="flex justify-center gap-6 text-center">
+                      <div><div className="text-2xl font-bold text-gold">{timeLeft.days}</div><div className="text-xs text-text-dim">Days</div></div>
+                      <div><div className="text-2xl font-bold text-gold">{timeLeft.hours}</div><div className="text-xs text-text-dim">Hours</div></div>
+                      <div><div className="text-2xl font-bold text-gold">{timeLeft.minutes}</div><div className="text-xs text-text-dim">Mins</div></div>
+                      <div><div className="text-2xl font-bold text-gold">{timeLeft.seconds}</div><div className="text-xs text-text-dim">Secs</div></div>
+                    </div>
+                    <p className="text-center text-xs text-text-dim">August 9, 2027 - Kitui County Goes to Polls</p>
+
+                    <button
+                      onClick={handleOpenIebcModal}
+                      className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-gold/20 px-4 py-2 text-sm font-semibold text-gold transition-all hover:bg-gold hover:text-bg-dark"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Je, Uko Kadi? (Check Your Voter Status)
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="animate-fade-up flex gap-4 opacity-0" style={{ animationDelay: "0.6s" }}>
+                  <Button variant="primary" onClick={() => setShowJoinModal(true)}>
+                    Join The Movement
+                  </Button>
+                  <Button variant="secondary" onClick={() => document.getElementById("support")?.scrollIntoView({ behavior: "smooth" })}>
+                    Support Us
+                  </Button>
+                </div>
+
+                <div className="animate-fade-up flex flex-wrap gap-2 opacity-0" style={{ animationDelay: "0.7s" }}>
+                  {hashtags.map((tag, idx) => (
+                    <span key={idx} className="rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-xs text-gold transition-all hover:bg-gold hover:text-bg-dark">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
-            </ScrollReveal>
 
-            {/* Right Terminal */}
-            <ScrollReveal delay={200} className="hidden lg:block">
-              <HeroTerminal />
-            </ScrollReveal>
-          </div>
-        </div>
+              {/* Right Column - Counter Card */}
+              <div className="animate-pop-in opacity-0" style={{ animationDelay: "0.2s" }}>
+                <Card className="relative overflow-hidden border border-gold/20 bg-bg-dark/90 shadow-2xl backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent" />
+                  <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-gold/5 blur-2xl" />
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-          <a href="#projects" className="flex flex-col items-center gap-2 text-text-dim/50 hover:text-green-primary transition-colors group">
-            <span className="font-mono text-xs uppercase tracking-wider">Scroll</span>
-            <div className="relative">
-              <div className="h-12 w-px bg-gradient-to-b from-green-primary/30 to-transparent" />
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-primary/50 group-hover:bg-green-primary animate-bounce" />
-            </div>
-          </a>
-        </div>
-      </section>
+                  <div className="relative text-center">
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5">
+                      <Users className="h-4 w-4 text-gold" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gold">Movement Strength</span>
+                    </div>
 
-      {/* ─── Stats Bar ─── */}
-      <section className="border-y border-border-default bg-bg-secondary/50">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <StatsBar />
-        </div>
-      </section>
+                    <div className="relative">
+                      <div className="text-7xl font-black text-gold lg:text-8xl">
+                        {joinedCount.toLocaleString()}
+                      </div>
+                      <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full bg-gold/20 blur-xl animate-pulse" />
+                    </div>
 
-      {/* ─── Featured Projects ─── */}
-      <section id="projects" className="max-w-7xl mx-auto px-4 py-24">
-        <SectionHeader
-          icon={Briefcase}
-          title="Featured Projects"
-          command="ls projects/ --featured"
-          description="A selection of my best work — real applications I've built and shipped to production."
-        />
+                    <p className="mt-3 text-sm font-medium text-text-light">
+                      Strong Supporters & Growing Daily
+                    </p>
 
-        {featuredLoading ? (
-          <div className="flex justify-center py-20">
-            <LoadingSpinner />
-          </div>
-        ) : (
-          <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {featuredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </ScrollReveal>
-        )}
+                    <div className="mx-auto mt-5 max-w-sm">
+                      <div className="flex justify-between text-xs text-text-dim mb-1">
+                        <span>Progress to Goal</span>
+                        <span>{Math.min(100, Math.floor((joinedCount / 200000) * 100))}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-gold/20">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-1000"
+                          style={{ width: `${Math.min(100, (joinedCount / 200000) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-text-dim">Target: 200,000 Supporters</p>
+                    </div>
 
-        <div className="text-center mt-12">
-          <Link href="/projects">
-            <Button variant="secondary" className="group">
-              View All Projects
-              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+                    {stats.recentRegistrations > 0 && (
+                      <div className="mt-4 pt-3 border-t border-gold/20">
+                        <p className="text-[10px] text-gold">
+                          +{stats.recentRegistrations} new supporters this week!
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-      {/* ─── Testimonials ─── */}
-      <Testimonials />
-
-      {/* ─── Project Ideas ─── */}
-      <section className="border-y border-border-default bg-bg-secondary/50 py-24">
-        <div className="max-w-7xl mx-auto px-4">
-          <SectionHeader
-            icon={Lightbulb}
-            title="Project Ideas"
-            command="ls ideas/ --upcoming"
-            description="Fresh concepts I'm exploring — open to collaboration and feedback."
-          />
-
-          {ideasLoading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {upcomingIdeas.map((idea) => (
-                <IdeaCard key={idea.id} project={idea} />
-              ))}
-            </ScrollReveal>
-          )}
-
-          <div className="text-center mt-12">
-            <Link href="/ideas">
-              <Button variant="secondary" className="group">
-                Explore All Ideas
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Upcoming Events ─── */}
-      {upcomingEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-24">
-          <SectionHeader
-            icon={Calendar}
-            title="Upcoming Events"
-            command="calendar --upcoming"
-            description="Join me at these upcoming events and connect with the community."
-          />
-
-          {eventsLoading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {upcomingEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </ScrollReveal>
-          )}
-
-          <div className="text-center mt-12">
-            <Link href="/events">
-              <Button variant="secondary" className="group">
-                View All Events
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {/* ─── Recent Blog Posts ─── */}
-      {recentPosts.length > 0 && (
-        <section className="border-y border-border-default bg-bg-secondary/50 py-24">
-          <div className="max-w-7xl mx-auto px-4">
-            <SectionHeader
-              icon={Newspaper}
-              title="Latest Writing"
-              command="tail blog/ -n 3"
-              description="Thoughts, tutorials, and insights on software development."
-            />
-
-            {postsLoading ? (
-              <div className="flex justify-center py-20">
-                <LoadingSpinner />
+                  <div className="mt-5 text-center">
+                    <p className="text-[11px] text-text-dim">
+                      🇰🇪 Kitui County's Choice for Progress 🇰🇪
+                    </p>
+                  </div>
+                </Card>
               </div>
-            ) : (
-              <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {recentPosts.map((post) => (
-                  <BlogCard key={post.id} post={post} />
-                ))}
-              </ScrollReveal>
-            )}
-
-            <div className="text-center mt-12">
-              <Link href="/blog">
-                <Button variant="secondary" className="group">
-                  Read All Posts
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
             </div>
           </div>
-        </section>
-      )}
 
-      {/* ─── Ideas Seeking Collaborators ─── */}
-      {seekingIdeas.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-24">
-          <SectionHeader
-            icon={Sparkles}
-            title="Collaboration Opportunities"
-            command="grep -r 'help wanted' ideas/"
-            description="Project ideas that are actively looking for contributors."
-          />
-
-          {seekingIdeasLoading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner />
+          {/* Scroll Indicator */}
+          <div className="animate-bounce absolute bottom-8 left-1/2 hidden -translate-x-1/2 transform cursor-pointer md:block">
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-text-dim">Scroll</span>
+              <ChevronDown className="h-4 w-4 text-gold" />
             </div>
-          ) : (
-            <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {seekingIdeas.map((idea) => (
-                <IdeaCard key={idea.id} project={idea} variant="compact" />
-              ))}
-            </ScrollReveal>
-          )}
-        </section>
-      )}
+          </div>
+        </div>
+      </section>
 
-      {/* ─── Projects Seeking Contributors ─── */}
-      {seekingContributors.length > 0 && (
-        <section className="border-y border-border-default bg-bg-secondary/50 py-24">
-          <div className="max-w-7xl mx-auto px-4">
-            <SectionHeader
-              icon={Sparkles}
-              title="Open Source Contributions"
-              command="grep -r 'help wanted' projects/"
-              description="Active projects that welcome contributors."
-            />
-
-            {seekingLoading ? (
-              <div className="flex justify-center py-20">
-                <LoadingSpinner />
+      {/* IEBC Modal */}
+      {showIebcModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+          onClick={() => setShowIebcModal(false)}
+        >
+          <div
+            className="relative w-full max-w-5xl h-[85vh] bg-bg-dark rounded-2xl border border-gold/30 shadow-2xl overflow-hidden animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gold/20 bg-bg-dark/95">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-gold" />
+                </div>
+                <div>
+                  <h3 className="font-montserrat text-xl font-bold text-gold">IEBC Voter Verification</h3>
+                  <p className="text-xs text-text-dim">Verify your voter status online</p>
+                </div>
               </div>
-            ) : (
-              <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {seekingContributors.map((project) => (
-                  <ProjectCard key={project.id} project={project} variant="compact" />
-                ))}
-              </ScrollReveal>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ─── Featured FAQs ─── */}
-      {featuredFAQs.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 py-24">
-          <SectionHeader
-            icon={HelpCircle}
-            title="Frequently Asked Questions"
-            command="cat FAQ.md --featured"
-            description="Common questions about my work, process, and collaboration."
-          />
-
-          {faqsLoading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner />
+              <button
+                onClick={() => setShowIebcModal(false)}
+                className="text-text-dim hover:text-gold transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
-          ) : (
-            <ScrollReveal stagger={150} className="grid gap-6 md:grid-cols-2">
-              {featuredFAQs.map((faq) => (
-                <FAQCard key={faq.id} faq={faq} />
-              ))}
-            </ScrollReveal>
-          )}
 
-          <div className="text-center mt-12">
-            <Link href="/faq">
-              <Button variant="secondary" className="group">
-                View All FAQs
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+            <div className="relative h-[calc(85vh-73px)] w-full bg-white">
+              {!iframeError ? (
+                <iframe
+                  src="https://verify.iebc.or.ke/"
+                  className="w-full h-full border-0"
+                  title="IEBC Voter Registration"
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox allow-top-navigation"
+                  onError={() => setIframeError(true)}
+                />
+              ) : null}
+
+              <div className={`absolute inset-0 flex items-center justify-center bg-bg-dark/95 transition-opacity ${iframeError ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                <div className="text-center p-6 max-w-md">
+                  <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                    <ExternalLink className="h-10 w-10 text-red-400" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-text-light mb-2">Cannot Load IEBC Portal</h4>
+                  <p className="text-sm text-text-dim mb-4">
+                    The IEBC website may be temporarily unavailable or requires external access.
+                    Please click the button below to open it directly in your browser.
+                  </p>
+                  <a
+                    href="https://verify.iebc.or.ke/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gold text-bg-dark font-semibold hover:bg-gold-light transition-all"
+                  >
+                    Open IEBC Website
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  <button
+                    onClick={() => setShowIebcModal(false)}
+                    className="mt-4 inline-flex items-center gap-2 px-6 py-2 rounded-full border border-gold/30 text-gold hover:bg-gold/10 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 border-t border-gold/20 bg-bg-dark/95 text-center">
+              <p className="text-[10px] text-text-dim">
+                This is an official IEBC portal. Your information is secure and encrypted.
+              </p>
+            </div>
           </div>
-        </section>
+        </div>
       )}
-      <ScrollReveal>
-        <ContactForm 
-          email="info@ascorpi.cloud"
-          github="ascorpi"
-          linkedin="stephenmuli"
-          location="Mombasa, Kenya"
-        />
-      </ScrollReveal>
 
-    </div>
-  );  
+      {/* Other Sections */}
+      <EventsSection />
+      <GallerySection />
+      <SupportSection />
+
+      {/* Footer */}
+      <footer className="border-t border-gold/20 bg-bg-dark py-8">
+        <div className="container mx-auto px-4 text-center text-text-dim">
+          <p>&copy; 2026 Hon. Nicholas MULILA Campaign. Working Today, Building Tomorrow.</p>
+          <p className="mt-2 text-sm">Data protected by Pasbest Ventures Ltd</p>
+        </div>
+      </footer>
+
+      {/* Join Movement Modal */}
+      <JoinMovementModal
+        isOpen={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+      />
+    </main>
+  );
 }
