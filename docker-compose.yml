@@ -1,8 +1,8 @@
 version: "3.9"
 
 services:
-  ascorpi:
-    container_name: ascorpi
+  mulila_governor:
+    container_name: mulila_governor
     build: .
     restart: unless-stopped
 
@@ -11,10 +11,10 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ascorpi.rule=Host(`ascorpi.cloud`)"
-      - "traefik.http.routers.ascorpi.entrypoints=websecure"
-      - "traefik.http.routers.ascorpi.tls.certresolver=letsencrypt"
-      - "traefik.http.services.ascorpi.loadbalancer.server.port=3000"
+      - "traefik.http.routers.mulila_governor.rule=Host(`mulila.pasbestventures.com`)"
+      - "traefik.http.routers.mulila_governor.entrypoints=websecure"
+      - "traefik.http.routers.mulila_governor.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mulila_governor.loadbalancer.server.port=3000"
 
 networks:
   proxy:
