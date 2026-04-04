@@ -79,12 +79,12 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Hon. Nicholas Mulla - Governor 2027 | Working Today, Building Tomorrow",
+  title: "Hon. Nicholas Mulila - Governor 2027 | Working Today, Building Tomorrow",
   description: "A leader, not just a politician. Join the movement for real change in Kitui County.",
-  keywords: "Nicholas Mulla, Kitui Governor, Kitui County, Governor 2027, Leadership, Change Makers, Kenya Politics",
-  authors: [{ name: "Team Mulla" }],
+  keywords: "Nicholas Mulila, Kitui Governor, Kitui County, Governor 2027, Leadership, Change Makers, Kenya Politics",
+  authors: [{ name: "Team Mulila" }],
   openGraph: {
-    title: "Hon. Nicholas Mulla - Governor 2027",
+    title: "Hon. Nicholas Mulila - Governor 2027",
     description: "Working Today, Building Tomorrow. Join the movement for real change in Kitui County.",
     type: "website",
     locale: "en_KE",
