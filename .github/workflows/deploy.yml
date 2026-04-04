@@ -25,11 +25,11 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest .
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/mulila_governor:latest .
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/mulila_governor:latest
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v0.1.6
@@ -40,22 +40,22 @@ jobs:
           script: |
             set -e
             echo "🚀 Starting deployment..."
-            
+
             cd ${{ secrets.APP_DIR }}
-            
+
             echo "📦 Pulling latest image..."
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ascorpi-ascorpi:latest
-            
+
             echo "🛑 Stopping existing container..."
             docker compose down || true
-            
+
             echo "▶️ Starting new container..."
             docker compose up -d
-            
+
             echo "🧹 Cleaning up..."
             docker image prune -f
-            
+
             echo "📊 Container status:"
             docker ps
-            
+
             echo "✅ Deployment completed!"
