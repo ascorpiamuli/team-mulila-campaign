@@ -118,6 +118,20 @@ export default function AdminDashboard() {
   const [timeRange, setTimeRange] = useState("30d");
   const [locationView, setLocationView] = useState<"constituency" | "ward">("constituency");
   const [selectedConstituency, setSelectedConstituency] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Check if device is desktop/laptop
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      setIsDesktop(width >= 1024); // lg breakpoint
+    };
+
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+
+    return () => window.removeEventListener('resize', checkDevice);
+  }, []);
 
   useEffect(() => {
     fetchAllData();
@@ -547,40 +561,42 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Map Section - Full Width */}
-      <div className="relative z-0 bg-bg-card/50 rounded-xl border border-gold/20 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-montserrat text-lg font-bold text-text-light flex items-center gap-2">
-              <Map className="h-5 w-5 text-gold" />
-              Kitui County Map
-            </h3>
-            <p className="text-text-dim text-sm">
-              {selectedConstituency
-                ? `Showing supporters in ${selectedConstituency}`
-                : 'Constituency-wise supporter distribution. Click on any constituency to filter.'}
-            </p>
+      {/* Map Section - Only show on desktop/laptop */}
+      {isDesktop && (
+        <div className="relative z-0 bg-bg-card/50 rounded-xl border border-gold/20 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-montserrat text-lg font-bold text-text-light flex items-center gap-2">
+                <Map className="h-5 w-5 text-gold" />
+                Kitui County Map
+              </h3>
+              <p className="text-text-dim text-sm">
+                {selectedConstituency
+                  ? `Showing supporters in ${selectedConstituency}`
+                  : 'Constituency-wise supporter distribution. Click on any constituency to filter.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-text-dim">
+              <span className="inline-flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-[#1a1a2e]" />
+                <span>0%</span>
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-[#C17B2B]" />
+                <span>100%</span>
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-xs text-text-dim">
-            <span className="inline-flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-[#1a1a2e]" />
-              <span>0%</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-[#C17B2B]" />
-              <span>100%</span>
-            </span>
+          <div className="relative z-0">
+            <KituiMap
+              data={mapData}
+              onConstituencyClick={(constituency) => {
+                setSelectedConstituency(constituency === selectedConstituency ? null : constituency);
+              }}
+            />
           </div>
         </div>
-        <div className="relative z-0">
-          <KituiMap
-            data={mapData}
-            onConstituencyClick={(constituency) => {
-              setSelectedConstituency(constituency === selectedConstituency ? null : constituency);
-            }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Charts Row 1 - Daily & Location Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
