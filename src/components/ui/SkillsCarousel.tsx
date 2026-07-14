@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import "devicon/devicon.min.css";
 import { cn } from "@/lib/utils";
 
 interface Skill {
@@ -17,34 +16,34 @@ const skills: Skill[] = [
   { name: "TypeScript", iconClass: "devicon-typescript-plain", category: "language" },
   { name: "JavaScript", iconClass: "devicon-javascript-plain", category: "language" },
   { name: "Tailwind CSS", iconClass: "devicon-tailwindcss-original", category: "frontend" },
-  
+
   // Backend
   { name: "Node.js", iconClass: "devicon-nodejs-plain", category: "backend" },
   { name: "Python", iconClass: "devicon-python-plain", category: "language" },
   { name: "Java", iconClass: "devicon-java-plain", category: "language" },
   { name: "PHP", iconClass: "devicon-php-plain", category: "language" },
-  
+
   // Databases
   { name: "PostgreSQL", iconClass: "devicon-postgresql-plain", category: "database" },
   { name: "MongoDB", iconClass: "devicon-mongodb-plain", category: "database" },
   { name: "MySQL", iconClass: "devicon-mysql-plain", category: "database" },
   { name: "Redis", iconClass: "devicon-redis-plain", category: "database" },
-  
+
   // DevOps & Cloud
   { name: "Docker", iconClass: "devicon-docker-plain", category: "devops" },
   //{ name: "Kubernetes", iconClass: "devicon-kubernetes-plain", category: "devops" },
   { name: "GitHub Actions", iconClass: "devicon-githubactions-plain", category: "devops" },
-  
+
   // Tools
   { name: "Git", iconClass: "devicon-git-plain", category: "tools" },
   { name: "GitHub", iconClass: "devicon-github-original", category: "tools" },
   { name: "VS Code", iconClass: "devicon-vscode-plain", category: "tools" },
   //{ name: "Figma", iconClass: "devicon-figma-plain", category: "design" },
-  
+
   // Operating Systems
   { name: "Ubuntu", iconClass: "devicon-ubuntu-plain", category: "os" },
   { name: "Linux", iconClass: "devicon-linux-plain", category: "os" },
-  
+
   // APIs
   //{ name: "GraphQL", iconClass: "devicon-graphql-plain", category: "api" },
   { name: "Postman", iconClass: "devicon-postman-plain", category: "tools" },
@@ -71,15 +70,15 @@ export function SkillsCarousel() {
 
     const scroll = () => {
       if (!scrollContainer || isDragging || isHovering) return;
-      
+
       scrollContainer.scrollLeft += scrollSpeed;
-      
+
       // Smooth infinite loop reset
       const totalWidth = scrollContainer.scrollWidth / 4;
       if (scrollContainer.scrollLeft >= totalWidth * 3) {
         scrollContainer.scrollLeft = totalWidth;
       }
-      
+
       animationFrame = requestAnimationFrame(scroll);
     };
 
@@ -123,7 +122,7 @@ export function SkillsCarousel() {
         {/* Gradient edges for smooth fade */}
         <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-bg-primary via-bg-primary/80 to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-bg-primary via-bg-primary/80 to-transparent z-10 pointer-events-none" />
-        
+
         {/* Main carousel */}
         <div
           ref={scrollRef}
@@ -136,8 +135,8 @@ export function SkillsCarousel() {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
           onMouseEnter={() => setIsHovering(true)}
-          style={{ 
-            scrollbarWidth: 'none', 
+          style={{
+            scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch'
           }}
@@ -161,7 +160,7 @@ export function SkillsCarousel() {
                     hoveredSkill === `${skill.name}-${index}` && "scale-110"
                   )} />
                 </div>
-                
+
                 {/* Tooltip - Enhanced with higher z-index and better visibility */}
                 {hoveredSkill === `${skill.name}-${index}` && (
                   <>
@@ -174,10 +173,10 @@ export function SkillsCarousel() {
                         {skill.category}
                       </p>
                     </div>
-                    
+
                     {/* Tooltip arrow */}
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-bg-card border-l-2 border-t-2 border-green-primary rotate-45 z-40" />
-                    
+
                     {/* Glow effect behind tooltip */}
                     <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 w-full h-10 bg-green-primary/20 blur-xl rounded-full z-30" />
                   </>
@@ -203,7 +202,7 @@ export function SkillsCarousel() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        
+
         <div className="flex items-center gap-3">
           <span className="relative flex h-2 w-2">
             <span className={cn(
@@ -219,7 +218,7 @@ export function SkillsCarousel() {
             {isHovering ? "paused" : "auto-scrolling"}
           </span>
         </div>
-        
+
         <button
           onClick={() => {
             if (scrollRef.current) {

@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle, AlertCircle, User, Mail, Phone, ChevronDown } from "lucide-react";
+import { useEffect, useState, useCallback, JSX } from "react";
+import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle, AlertCircle, User, Mail, Phone, ChevronDown, CalendarDays, Clock3, MapPinned, UsersRound, ArrowRight, Sparkles, Shield, Info, Image as ImageIcon } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { supabase } from '../../lib/supabase/client';
 import { registerForEvent } from "../../lib/supabase/functions";
 import { useToast } from "./ui/Toast";
 import { getConstituencies } from "kenya-locations";
+import Image from "next/image";
 
 interface Event {
-  id: number;
+  id: string;
   title: string;
   date: string;
   time: string;
@@ -20,6 +21,10 @@ interface Event {
   expected_attendees?: number;
   status?: string;
   created_at?: string;
+  agenda?: string | null;
+  speakers?: string | null;
+  image_url?: string | null;
+  registration_link?: string | null;
 }
 
 interface RegistrationFormData {
@@ -46,6 +51,8 @@ export default function EventsSection() {
   const [registrationStatus, setRegistrationStatus] = useState<"idle" | "success" | "error">("idle");
   const [constituencies, setConstituencies] = useState<ConstituencyOption[]>([]);
   const [showConstituencyDropdown, setShowConstituencyDropdown] = useState(false);
+  const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     fullName: "",
@@ -63,10 +70,8 @@ export default function EventsSection() {
         name: c.name,
         county: c.county
       }));
-      // Filter for Kitui County constituencies
       const kituiConstituencies = constituenciesList.filter(c => c.county === "Kitui");
       setConstituencies(kituiConstituencies);
-      console.log("✅ Loaded constituencies:", kituiConstituencies.length);
     } catch (error) {
       console.error("Error loading constituencies:", error);
     }
@@ -74,8 +79,6 @@ export default function EventsSection() {
 
   // Fetch events from Supabase
   const fetchEvents = useCallback(async () => {
-    console.log("📅 [EventsSection] Fetching upcoming events...");
-
     try {
       setIsLoading(true);
       setError(null);
@@ -83,20 +86,16 @@ export default function EventsSection() {
       const { data, error: fetchError } = await supabase
         .from("campaign_events")
         .select("*")
-        .gte("date", new Date().toISOString().split('T')[0])
         .order("date", { ascending: true })
         .limit(8);
 
       if (fetchError) {
-        console.error("❌ [EventsSection] Error fetching events:", fetchError);
         throw fetchError;
       }
 
       if (data && data.length > 0) {
-        console.log(`✅ [EventsSection] Loaded ${data.length} events`);
         setEvents(data);
       } else {
-        console.log("ℹ️ [EventsSection] No upcoming events found, using fallback data");
         setEvents(fallbackEvents);
       }
     } catch (error) {
@@ -122,6 +121,11 @@ export default function EventsSection() {
       phone: "",
       constituency: ""
     });
+  };
+
+  const handleViewDetails = (event: Event) => {
+    setSelectedEventDetails(event);
+    setShowEventDetailsModal(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,9 +160,7 @@ export default function EventsSection() {
     setRegistrationStatus("idle");
 
     try {
-      console.log(`🎟️ Registering for event: ${selectedEvent?.title}`);
-
-      const result = await registerForEvent(selectedEvent!.id.toString(), {
+      const result = await registerForEvent(selectedEvent!.id, {
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
@@ -197,18 +199,29 @@ export default function EventsSection() {
 
   const getEventTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      'Rally': 'bg-red-500/20 text-red-400',
-      'Summit': 'bg-blue-500/20 text-blue-400',
-      'Meeting': 'bg-green-500/20 text-green-400',
-      'Forum': 'bg-purple-500/20 text-purple-400',
-      'Workshop': 'bg-yellow-500/20 text-yellow-400'
+      'Rally': 'bg-red-500/20 text-red-400 border-red-500/30',
+      'Summit': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      'Meeting': 'bg-green-500/20 text-green-400 border-green-500/30',
+      'Forum': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      'Workshop': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
     };
-    return colors[type] || 'bg-gold/20 text-gold';
+    return colors[type] || 'bg-gold/20 text-gold border-gold/30';
+  };
+
+  const getEventTypeIcon = (type: string) => {
+    const icons: Record<string, JSX.Element> = {
+      'Rally': <Shield className="h-4 w-4" />,
+      'Summit': <Sparkles className="h-4 w-4" />,
+      'Meeting': <UsersRound className="h-4 w-4" />,
+      'Forum': <Info className="h-4 w-4" />,
+      'Workshop': <Calendar className="h-4 w-4" />
+    };
+    return icons[type] || <Calendar className="h-4 w-4" />;
   };
 
   const fallbackEvents: Event[] = [
     {
-      id: 1,
+      id: "1",
       title: "Kitui Central Mega Rally",
       date: "2026-04-15",
       time: "10:00 AM - 4:00 PM",
@@ -216,10 +229,11 @@ export default function EventsSection() {
       description: "Official campaign launch and endorsement ceremony. Come and be part of history as we kickstart the journey to transform Kitui County.",
       type: "Rally",
       expected_attendees: 10000,
-      status: "upcoming"
+      status: "upcoming",
+      image_url: null
     },
     {
-      id: 2,
+      id: "2",
       title: "Youth Empowerment Summit",
       date: "2026-04-22",
       time: "9:00 AM - 3:00 PM",
@@ -227,10 +241,11 @@ export default function EventsSection() {
       description: "Skills training and entrepreneurship forum for Kitui's youth. Learn from successful entrepreneurs and access funding opportunities.",
       type: "Summit",
       expected_attendees: 5000,
-      status: "upcoming"
+      status: "upcoming",
+      image_url: null
     },
     {
-      id: 3,
+      id: "3",
       title: "Ward Leaders Meeting",
       date: "2026-04-28",
       time: "2:00 PM - 6:00 PM",
@@ -238,10 +253,11 @@ export default function EventsSection() {
       description: "Strategy meeting with all ward representatives to discuss grassroots mobilization and campaign coordination.",
       type: "Meeting",
       expected_attendees: 500,
-      status: "upcoming"
+      status: "upcoming",
+      image_url: null
     },
     {
-      id: 4,
+      id: "4",
       title: "Community Development Forum",
       date: "2026-05-05",
       time: "8:00 AM - 5:00 PM",
@@ -249,32 +265,36 @@ export default function EventsSection() {
       description: "Open forum discussing development agenda for Kitui County. Residents are invited to share their priorities and concerns.",
       type: "Forum",
       expected_attendees: 8000,
-      status: "upcoming"
+      status: "upcoming",
+      image_url: null
     }
   ];
 
   if (isLoading) {
     return (
-      <section id="events" className="py-20">
+      <section id="events" className="py-20 bg-gradient-to-b from-bg-dark to-bg-dark/80">
         <div className="container mx-auto px-4 md:px-6">
           <div className="mb-12 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5 mb-4">
+              <Calendar className="h-4 w-4 text-gold animate-pulse" />
+              <span className="text-xs font-semibold text-gold">LOADING EVENTS</span>
+            </div>
             <h2 className="font-montserrat text-4xl font-bold md:text-5xl">
               <span className="text-gold">UPCOMING</span> EVENTS
             </h2>
-            <p className="mt-4 text-text-dim">Loading events...</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <div className="h-32 bg-gold/10 rounded-lg mb-4"></div>
-                <div className="h-4 bg-gold/10 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gold/10 rounded w-1/2 mb-4"></div>
+              <div key={i} className="bg-bg-card/50 rounded-2xl border border-gold/20 p-6 animate-pulse">
+                <div className="h-8 w-24 bg-gold/10 rounded-full mb-4"></div>
+                <div className="h-6 bg-gold/10 rounded w-3/4 mb-3"></div>
                 <div className="space-y-2">
-                  <div className="h-3 bg-gold/10 rounded w-full"></div>
-                  <div className="h-3 bg-gold/10 rounded w-full"></div>
-                  <div className="h-3 bg-gold/10 rounded w-3/4"></div>
+                  <div className="h-4 bg-gold/10 rounded w-full"></div>
+                  <div className="h-4 bg-gold/10 rounded w-full"></div>
+                  <div className="h-4 bg-gold/10 rounded w-2/3"></div>
                 </div>
-              </Card>
+                <div className="mt-4 h-10 bg-gold/10 rounded-full"></div>
+              </div>
             ))}
           </div>
         </div>
@@ -300,57 +320,232 @@ export default function EventsSection() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event, index) => (
               <div
                 key={event.id}
-                className="animate-fade-up opacity-0"
+                className="animate-fade-up opacity-0 group"
                 style={{ animationDelay: `${index * 0.1}s`, animationFillMode: "forwards" }}
               >
-                <Card className="group relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-gold/10">
-                  <div className={`mb-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${getEventTypeColor(event.type)}`}>
-                    {event.type}
-                  </div>
-                  <h3 className="mb-3 font-montserrat text-lg font-bold text-text-light leading-tight">
-                    {event.title}
-                  </h3>
-                  <div className="mb-3 space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-text-dim">
-                      <Calendar className="h-3.5 w-3.5 text-gold flex-shrink-0" />
-                      <span>{formatDate(event.date)}</span>
+                <div className="relative bg-bg-card/80 backdrop-blur-sm rounded-2xl border border-gold/20 overflow-hidden hover:border-gold/50 transition-all duration-500 hover:shadow-2xl hover:shadow-gold/10 hover:-translate-y-2 h-full flex flex-col">
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                  {/* Event Image */}
+                  {event.image_url ? (
+                    <div className="relative w-full h-48 overflow-hidden">
+                      <Image
+                        src={event.image_url}
+                        alt={event.title}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-bg-card/80 via-transparent to-transparent" />
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-text-dim">
-                      <Clock className="h-3.5 w-3.5 text-gold flex-shrink-0" />
-                      <span>{event.time}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-text-dim">
-                      <MapPin className="h-3.5 w-3.5 text-gold flex-shrink-0" />
-                      <span className="line-clamp-1">{event.venue}</span>
-                    </div>
-                    {event.expected_attendees && (
-                      <div className="flex items-center gap-2 text-xs text-text-dim">
-                        <Users className="h-3.5 w-3.5 text-gold flex-shrink-0" />
-                        <span>{event.expected_attendees.toLocaleString()} expected</span>
+                  ) : (
+                    <div className="relative w-full h-48 bg-gradient-to-br from-gold/10 to-gold/5 flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-2 text-text-dim/30">
+                        <ImageIcon className="h-12 w-12" />
+                        <span className="text-xs">No image</span>
                       </div>
-                    )}
+                    </div>
+                  )}
+
+                  {/* Event Type Badge */}
+                  <div className="relative px-6 pt-4">
+                    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border ${getEventTypeColor(event.type)}`}>
+                      {getEventTypeIcon(event.type)}
+                      {event.type}
+                    </div>
                   </div>
-                  <p className="mb-4 text-xs text-text-dim line-clamp-2">
-                    {event.description}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="w-full text-sm py-2"
-                    onClick={() => handleRegisterClick(event)}
-                  >
-                    <Ticket className="h-3.5 w-3.5 mr-2" />
-                    Register Now
-                  </Button>
-                </Card>
+
+                  {/* Content */}
+                  <div className="relative p-6 pt-3 flex-1 flex flex-col">
+                    <h3 className="font-montserrat text-xl font-bold text-text-light mb-3 leading-tight group-hover:text-gold transition-colors duration-300">
+                      {event.title}
+                    </h3>
+
+                    {/* Event Details Grid */}
+                    <div className="space-y-2.5 mb-4 flex-1">
+                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
+                        <CalendarDays className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
+                        <span>{formatDate(event.date)}</span>
+                      </div>
+                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
+                        <Clock3 className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
+                        <span>{event.time}</span>
+                      </div>
+                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
+                        <MapPinned className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
+                        <span className="line-clamp-1">{event.venue}</span>
+                      </div>
+                      {event.expected_attendees && (
+                        <div className="flex items-start gap-2.5 text-sm text-text-dim">
+                          <UsersRound className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
+                          <span>{event.expected_attendees.toLocaleString()} expected attendees</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm text-text-dim mb-4 line-clamp-2 flex-1">
+                      {event.description}
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-auto">
+                      <button
+                        onClick={() => handleViewDetails(event)}
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-gold/30 text-gold hover:bg-gold/10 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-1.5 group/btn"
+                      >
+                        <Info className="h-4 w-4" />
+                        Details
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/btn:translate-x-1" />
+                      </button>
+                      <button
+                        onClick={() => handleRegisterClick(event)}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 flex items-center justify-center gap-1.5"
+                      >
+                        <Ticket className="h-4 w-4" />
+                        Register
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  {event.status === "upcoming" && (
+                    <div className="absolute top-4 right-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-medium">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        Upcoming
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+
+          {events.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-text-dim">No upcoming events at the moment. Check back soon!</p>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Event Details Modal */}
+      {showEventDetailsModal && selectedEventDetails && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+          onClick={() => setShowEventDetailsModal(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-bg-dark to-bg-card rounded-2xl border border-gold/30 shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowEventDetailsModal(false)}
+              className="absolute top-4 right-4 z-20 rounded-full bg-black/50 p-2 text-text-dim hover:text-gold transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="p-8">
+              {/* Event Image */}
+              {selectedEventDetails.image_url && (
+                <div className="relative w-full h-64 rounded-xl overflow-hidden mb-6">
+                  <Image
+                    src={selectedEventDetails.image_url}
+                    alt={selectedEventDetails.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-bg-dark/50 via-transparent to-transparent" />
+                </div>
+              )}
+
+              {/* Header */}
+              <div className="mb-6">
+                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border ${getEventTypeColor(selectedEventDetails.type)} mb-4`}>
+                  {getEventTypeIcon(selectedEventDetails.type)}
+                  {selectedEventDetails.type}
+                </div>
+                <h2 className="font-montserrat text-3xl font-bold text-gold">
+                  {selectedEventDetails.title}
+                </h2>
+              </div>
+
+              {/* Event Details Grid */}
+              <div className="grid gap-4 mb-6">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
+                  <CalendarDays className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-text-dim">Date</p>
+                    <p className="text-text-light font-medium">{formatDate(selectedEventDetails.date)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
+                  <Clock3 className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-text-dim">Time</p>
+                    <p className="text-text-light font-medium">{selectedEventDetails.time}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
+                  <MapPinned className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-text-dim">Venue</p>
+                    <p className="text-text-light font-medium">{selectedEventDetails.venue}</p>
+                  </div>
+                </div>
+
+                {selectedEventDetails.expected_attendees && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
+                    <UsersRound className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-text-dim">Expected Attendees</p>
+                      <p className="text-text-light font-medium">{selectedEventDetails.expected_attendees.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="mb-6 p-4 rounded-lg bg-gold/5 border border-gold/20">
+                <h4 className="text-xs font-semibold text-gold mb-2">ABOUT THIS EVENT</h4>
+                <p className="text-sm text-text-light leading-relaxed">
+                  {selectedEventDetails.description}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowEventDetailsModal(false);
+                    handleRegisterClick(selectedEventDetails);
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Ticket className="h-4 w-4" />
+                  Register Now
+                </button>
+                <button
+                  onClick={() => setShowEventDetailsModal(false)}
+                  className="px-6 py-3 rounded-xl border border-gold/30 text-gold hover:bg-gold/10 transition-all duration-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Registration Modal */}
       {showRegistrationModal && selectedEvent && (
@@ -362,7 +557,6 @@ export default function EventsSection() {
             className="relative w-full max-w-md bg-gradient-to-br from-bg-dark to-bg-card rounded-2xl border border-gold/30 shadow-2xl animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
             <button
               onClick={() => !isSubmitting && setShowRegistrationModal(false)}
               className="absolute top-4 right-4 z-20 rounded-full bg-black/50 p-1.5 text-text-dim hover:text-gold transition-colors"
@@ -370,7 +564,6 @@ export default function EventsSection() {
               <X className="h-4 w-4" />
             </button>
 
-            {/* Header */}
             <div className="text-center p-6 border-b border-gold/20">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold/20 mb-4">
                 <Ticket className="h-8 w-8 text-gold" />
@@ -383,7 +576,6 @@ export default function EventsSection() {
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleRegisterSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gold mb-1">
@@ -442,7 +634,6 @@ export default function EventsSection() {
                 </div>
               </div>
 
-              {/* Constituency Dropdown */}
               <div className="relative">
                 <label className="block text-xs font-semibold text-gold mb-1">
                   Constituency <span className="text-red-400">*</span>
@@ -476,7 +667,6 @@ export default function EventsSection() {
                 )}
               </div>
 
-              {/* Status Messages */}
               {registrationStatus === "success" && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
                   <CheckCircle className="h-4 w-4 text-green-400" />
@@ -495,7 +685,6 @@ export default function EventsSection() {
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}

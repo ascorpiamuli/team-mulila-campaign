@@ -4,9 +4,8 @@ import { getClientIP, getIPDetails } from '../../src/lib/ip.service'
 // In src/lib/supabase/functions.ts
 interface RegisterSupporterData {
   fullName: string
-  email: string
+  email?: string | null  // Made optional
   phone: string
-  idNumber: string
   county: string
   constituency: string
   ward: string
@@ -17,7 +16,11 @@ interface RegisterSupporterData {
   keyPresses: number
   timeSpent: number
   securityReport: any
-  deviceFingerprint?: string  // ADD THIS
+  deviceFingerprint?: string
+  // Remove idNumber since it's not used anymore
+  // Remove isVerified - handled on backend
+  // Remove verificationMethod - handled on backend
+  // Remove verificationStatus - handled on backend
 }
 
 /**

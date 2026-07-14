@@ -12,9 +12,8 @@ import {
   Outfit
 } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
 import { ToastProvider } from "@/components/ui/Toast";
-
+import ConditionalNavbar from '../components/ConditionalNavbar';
 // Primary Fonts
 const inter = Inter({
   subsets: ["latin"],
@@ -114,7 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         antialiased
       `}>
         <ToastProvider>
-          <Navbar />
+          <ConditionalNavbar />
           {children}
         </ToastProvider>
       </body>

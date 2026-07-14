@@ -21,7 +21,7 @@ import { DeviceFingerprint } from '../lib/device-fingerprint';
 interface JoinMovementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRegistrationSuccess?: () => void; // Add callback for successful registration
+  onRegistrationSuccess?: () => void;
 }
 
 interface ConstituencyOption {
@@ -48,12 +48,15 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
   const [isSuccess, setIsSuccess] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
 
+  // Honeypot state - hidden from real users
+  const [honeypot, setHoneypot] = useState("");
+  const [formStartTime, setFormStartTime] = useState<number>(0);
+
   // Initialize with empty values - NO PREFILLING
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     phone: "",
-    idNumber: "",
     county: "Kitui",
     constituency: "",
     ward: "",
@@ -83,6 +86,7 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
   const keyPressesRef = useRef<number>(0);
   const formInitializedRef = useRef<boolean>(false);
   const toastShownRef = useRef<boolean>(false);
+  const isHumanVerifiedRef = useRef<boolean>(false);
 
   // Generate device fingerprint on mount
   useEffect(() => {
@@ -90,10 +94,16 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
       const fingerprint = DeviceFingerprint.getInstance();
       const fp = await fingerprint.generateFingerprint();
       setDeviceFingerprint(fp);
-      console.log("🔐 Device fingerprint generated:", fp.substring(0, 20) + "...");
     };
     generateFingerprint();
   }, []);
+
+  // Record form start time when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormStartTime(Date.now());
+    }
+  }, [isOpen]);
 
   // Load Kenya locations data on mount
   useEffect(() => {
@@ -143,7 +153,7 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
     setPrivacyAccepted(accepted);
   }, []);
 
-  // Advanced bot detection using client-trace
+  // Advanced bot detection - COMPLETELY HIDDEN FROM USER
   useEffect(() => {
     if (!isOpen) return;
 
@@ -179,11 +189,14 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
 
         const finalScore = Math.min(100, score + 30);
         setBotScore(finalScore);
-        setIsHuman(finalScore >= 40);
+        const human = finalScore >= 40;
+        setIsHuman(human);
+        isHumanVerifiedRef.current = human;
 
       } catch (error) {
         console.error("Client-trace security check failed:", error);
         setIsHuman(true);
+        isHumanVerifiedRef.current = true;
         setBotScore(70);
       }
     };
@@ -247,7 +260,42 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
     router.push("/privacy");
   };
 
+  // Validate email if provided
+  const isValidEmail = (email: string) => {
+    if (!email) return true; // Email is optional
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Honeypot and bot detection
+  const isBotDetected = () => {
+    // Check 1: Honeypot field should be empty
+    if (honeypot) {
+      console.log("🤖 Bot detected: Honeypot field filled");
+      return true;
+    }
+
+    // Check 2: Form filled too fast (less than 3 seconds)
+    const timeSpent = (Date.now() - formStartTime) / 1000;
+    if (timeSpent < 3 && isOpen) {
+      console.log(`🤖 Bot detected: Form filled in ${timeSpent.toFixed(1)} seconds (too fast)`);
+      return true;
+    }
+
+    return false;
+  };
+
   const validateForm = () => {
+    // First check for bot activity
+    if (isBotDetected()) {
+      // Silently fail - show success message to bot
+      console.log("🤖 Bot detected - silently failing");
+      showToast("Successfully joined Team Mulila! Welcome aboard! 🎉", "success");
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      return false;
+    }
+
     if (!privacyAccepted) {
       setShowPrivacyWarning(true);
       showToast("Please accept the Privacy Policy to continue", "warning");
@@ -257,8 +305,9 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
       showToast("Please enter your full name", "error");
       return false;
     }
-    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      showToast("Please enter a valid email address", "error");
+    // Email is now optional - only validate if provided
+    if (formData.email && !isValidEmail(formData.email)) {
+      showToast("Please enter a valid email address or leave it blank", "error");
       return false;
     }
     if (!formData.phone || formData.phone.length < 10) {
@@ -270,10 +319,6 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
       showToast("Please enter a valid Kenyan phone number", "error");
       return false;
     }
-    if (!formData.idNumber || formData.idNumber.length < 6) {
-      showToast("Please enter a valid ID number", "error");
-      return false;
-    }
     if (!formData.constituency) {
       showToast("Please select your constituency", "error");
       return false;
@@ -282,10 +327,7 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
       showToast("Please select your ward", "error");
       return false;
     }
-    if (!isHuman) {
-      showToast("Please interact with the form to verify you're human", "warning");
-      return false;
-    }
+    // Human verification is now silent - no user-facing check
     return true;
   };
 
@@ -295,6 +337,16 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
   };
 
   const submitRegistration = async () => {
+    // Double-check bot status before submitting
+    if (isBotDetected()) {
+      console.log("🤖 Bot detected during submission - aborting");
+      showToast("Successfully joined Team Mulila! Welcome aboard! 🎉", "success");
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      return;
+    }
+
     setIsSubmitting(true);
     setVerificationStatus("verifying");
 
@@ -311,9 +363,8 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
 
       const result = await registerSupporter({
         fullName: formData.fullName,
-        email: formData.email,
+        email: formData.email || null, // Allow null for optional email
         phone: formData.phone,
-        idNumber: formData.idNumber,
         county: formData.county,
         constituency: formData.constituency,
         ward: formData.ward,
@@ -324,30 +375,25 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
         keyPresses: keyPressesRef.current,
         timeSpent: Math.floor((Date.now() - startTimeRef.current) / 1000),
         securityReport: securityReport,
-        deviceFingerprint: deviceFingerprint
+        deviceFingerprint: deviceFingerprint,
+        // Removed: isVerified, verificationMethod, verificationStatus
+        // These are handled on the backend
       });
 
       if (result.success) {
         setVerificationStatus("success");
 
-        // Show single success toast only once
         if (!toastShownRef.current) {
           toastShownRef.current = true;
           showToast("Successfully joined Team Mulila! Welcome aboard! 🎉", "success");
         }
 
-        // Call the success callback to refresh parent component data
         if (onRegistrationSuccess) {
           onRegistrationSuccess();
         }
 
-        // Force a hard refresh of the page to update all counters
         setTimeout(() => {
-          // Option 1: Soft refresh - reload the page
           window.location.reload();
-
-          // Option 2: Or just refresh the counter by calling the callback
-          // The parent component will handle the refresh
         }, 1500);
 
         setTimeout(() => {
@@ -355,7 +401,6 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
             fullName: "",
             email: "",
             phone: "",
-            idNumber: "",
             county: "Kitui",
             constituency: "",
             ward: "",
@@ -366,7 +411,6 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
           onClose();
         }, 2000);
       } else {
-        // Generic error - no details exposed
         setVerificationStatus("error");
         showToast("Registration failed. Please try again.", "error");
       }
@@ -431,35 +475,6 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
             </p>
           </div>
 
-          {/* Bot Verification Status */}
-          <div className="relative z-10 mx-6 mt-4 p-3 rounded-lg bg-gold/5 border border-gold/20">
-            <div className="flex items-center justify-between text-xs flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Fingerprint className="h-3 w-3 text-gold" />
-                <span className="text-text-dim">Status: {isHuman ? "✓ Human Verified" : "⏳ Verification in progress..."}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MousePointer className="h-3 w-3 text-gold" />
-                <span className="text-text-dim">Activity: {mouseMovementsRef.current.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 text-gold" />
-                <span className="text-text-dim">Time: {Math.floor((Date.now() - startTimeRef.current) / 1000)}s</span>
-              </div>
-            </div>
-            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-gold/20">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-500"
-                style={{ width: `${botScore}%` }}
-              />
-            </div>
-            <p className="mt-1 text-[10px] text-text-dim">
-              {isHuman
-                ? "✓ Human verification complete - You can submit the form"
-                : "⏳ Please interact with the form (move mouse, type, click) to verify you're human..."}
-            </p>
-          </div>
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="relative z-10 p-6 space-y-4">
             {/* County - Read Only */}
@@ -490,17 +505,17 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="e.g., John Mwangi"
+                  placeholder="Enter your full name (e.g., John Mwangi)"
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light placeholder:text-text-dim focus:border-gold focus:outline-none transition-colors"
                   required
                 />
               </div>
             </div>
 
-            {/* Email */}
+            {/* Email - Now Optional */}
             <div>
               <label className="block text-xs font-semibold text-gold mb-1">
-                Email Address <span className="text-red-400">*</span>
+                Email Address <span className="text-text-dim text-[10px]">(Optional)</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
@@ -509,11 +524,11 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="e.g., john@example.com"
+                  placeholder="Enter your email address (optional)"
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light placeholder:text-text-dim focus:border-gold focus:outline-none transition-colors"
-                  required
                 />
               </div>
+              <p className="mt-1 text-[10px] text-text-dim">Optional - Leave blank if you don't have one</p>
             </div>
 
             {/* Phone */}
@@ -528,31 +543,12 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="e.g., 0712345678"
+                  placeholder="Enter your phone number (e.g., 0712345678)"
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light placeholder:text-text-dim focus:border-gold focus:outline-none transition-colors"
                   required
                 />
               </div>
               <p className="mt-1 text-[10px] text-text-dim">Enter your Safaricom, Airtel, or Telkom Kenya number</p>
-            </div>
-
-            {/* ID Number */}
-            <div>
-              <label className="block text-xs font-semibold text-gold mb-1">
-                ID Number <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim" />
-                <input
-                  type="text"
-                  name="idNumber"
-                  value={formData.idNumber}
-                  onChange={handleChange}
-                  placeholder="e.g., 12345678"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light placeholder:text-text-dim focus:border-gold focus:outline-none transition-colors"
-                  required
-                />
-              </div>
             </div>
 
             {/* Constituency - Pure Dropdown */}
@@ -567,7 +563,7 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   onClick={() => setShowConstituencyDropdown(!showConstituencyDropdown)}
                   className="w-full pl-10 pr-10 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light text-left focus:border-gold focus:outline-none transition-colors cursor-pointer"
                 >
-                  {formData.constituency || "Select Constituency"}
+                  {formData.constituency || "Select your constituency"}
                 </button>
                 <ChevronDown
                   className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim pointer-events-none"
@@ -602,7 +598,7 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   className={`w-full pl-10 pr-10 py-3 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light text-left focus:border-gold focus:outline-none transition-colors ${!formData.constituency ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   disabled={!formData.constituency}
                 >
-                  {formData.ward || (formData.constituency ? "Select Ward" : "Select constituency first")}
+                  {formData.ward || (formData.constituency ? "Select your ward" : "Select constituency first")}
                 </button>
                 <ChevronDown
                   className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-dim pointer-events-none"
@@ -622,6 +618,21 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Honeypot Field - Hidden from users, visible to bots */}
+            <div className="hidden" aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input
+                type="text"
+                id="website"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                className="hidden"
+              />
             </div>
 
             {/* Privacy Policy Agreement */}
@@ -650,10 +661,11 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
                 </p>
               )}
             </div>
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting || !isHuman || verificationStatus === "success"}
+              disabled={isSubmitting || verificationStatus === "success"}
               className="w-full py-3 rounded-full bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold transition-all hover:shadow-lg hover:shadow-gold/20 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
             >
               <span className="relative z-10 flex items-center justify-center gap-2">
@@ -684,8 +696,8 @@ export default function JoinMovementModal({ isOpen, onClose, onRegistrationSucce
       <OTPVerificationModal
         isOpen={showOTPModal}
         phoneNumber={pendingPhone}
-        deviceFingerprint={deviceFingerprint}  // ADD THIS LINE - pass the fingerprint
-        email={formData.email}
+        deviceFingerprint={deviceFingerprint}
+        email={formData.email || ""}
         onClose={() => {
           setShowOTPModal(false);
           setIsPhoneVerified(false);

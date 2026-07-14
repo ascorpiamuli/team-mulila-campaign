@@ -383,3 +383,56 @@
 .animate-scale-in {
   animation: scale-in 0.2s ease-out forwards;
 }
+/* Leaflet styles */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom Leaflet theming */
+.leaflet-container {
+  background: #0a0a0a !important;
+  font-family: inherit !important;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid rgba(193, 123, 43, 0.2) !important;
+  background: rgba(20, 20, 20, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-control-zoom a {
+  color: #e5e5e5 !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(193, 123, 43, 0.2) !important;
+  color: #C17B2B !important;
+}
+
+.leaflet-tooltip {
+  background: rgba(10, 10, 10, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(193, 123, 43, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  color: #e5e5e5 !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+.leaflet-tooltip::before {
+  border-top-color: rgba(193, 123, 43, 0.3) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(10, 10, 10, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(193, 123, 43, 0.3) !important;
+  border-radius: 8px !important;
+  color: #e5e5e5 !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(10, 10, 10, 0.95) !important;
+}

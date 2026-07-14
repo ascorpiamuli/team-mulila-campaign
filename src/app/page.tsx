@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import EventsSection from "@/components/EventsSection";
-import VolunteerSection from "@/components/VolunteerSection";
 import GallerySection from "@/components/GallerySection";
 import SupportSection from "@/components/SupportSection";
-import { ChevronDown, Sparkles, Star, Zap, Users, Target, Calendar, Award, Heart, Shield, X, ExternalLink, CheckCircle } from "lucide-react";
+import { ChevronDown, Sparkles, Star, Zap, Users, Target, Calendar, Award, Heart, Shield, X, ExternalLink, CheckCircle, Trophy, Flag, Building } from "lucide-react";
 import Image from "next/image";
 import JoinMovementModal from '../components/JoinMovementModal';
 import { getCampaignStats } from '../../lib/supabase/functions';
+import Link from "next/link";
 
 export default function Home() {
-  const [joinedCount, setJoinedCount] = useState(0);
   const [displayCount, setDisplayCount] = useState(0);
   const [particles, setParticles] = useState<Array<{ width: number; height: number; left: number; top: number; duration: number; delay: number }>>([]);
   const [timeLeft, setTimeLeft] = useState({
@@ -33,33 +32,32 @@ export default function Home() {
     recentRegistrations: 0
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [animationStarted, setAnimationStarted] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Use ref to prevent multiple fetches
+  const hasFetchedRef = useRef(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const hashtags = ["#MULILATheThird", "#NikoNaKitui", "#WorkingToday", "#BuildingTomorrow"];
 
-  // Fetch real supporter count using the campaign-stats function
-  const fetchSupporterStats = useCallback(async () => {
-    console.log("📊 [Home] Starting to fetch campaign statistics...");
-    console.log("⏰ [Home] Timestamp:", new Date().toISOString());
+  // Fetch real supporter count - set directly without animation
+  const fetchSupporterStats = useCallback(async (showLoading = true) => {
+    // Prevent concurrent fetches
+    if (isRefreshing) return;
+
+    if (showLoading) {
+      setIsRefreshing(true);
+    }
+
+    console.log("📊 [Home] Fetching campaign statistics...");
 
     try {
-      setIsLoadingStats(true);
-      setError(null);
-
-      console.log("🔄 [Home] Calling getCampaignStats() function...");
       const result = await getCampaignStats();
-
-      console.log("✅ [Home] Campaign stats received:", {
-        success: result.success,
-        hasData: !!result.data,
-        totalSupporters: result.data?.totalSupporters,
-        recentRegistrations: result.data?.recentRegistrations
-      });
 
       if (result.success && result.data) {
         const newTotal = result.data.totalSupporters || 0;
-        console.log("📈 [Home] Updating stats with:", result.data);
+
+        // Set stats immediately
         setStats({
           totalSupporters: newTotal,
           constituencies: result.data.constituencies || 8,
@@ -67,33 +65,22 @@ export default function Home() {
           recentRegistrations: result.data.recentRegistrations || 0
         });
 
-        // Immediately set the count without animation
-        setJoinedCount(newTotal);
+        // Set display count directly - NO ANIMATION
         setDisplayCount(newTotal);
-        console.log("🎉 [Home] Stats updated successfully!");
-      } else {
-        console.warn("⚠️ [Home] No data in response, using fallback values");
-        setJoinedCount(0);
-        setDisplayCount(0);
+        setIsLoadingStats(false);
       }
-
     } catch (error) {
       console.error("❌ [Home] Error fetching supporter stats:", error);
-      setError(error instanceof Error ? error.message : "Failed to load statistics");
-      setJoinedCount(0);
-      setDisplayCount(0);
+      setIsLoadingStats(false);
     } finally {
-      // Small delay to ensure smooth transition
-      setTimeout(() => {
-        setIsLoadingStats(false);
-      }, 500);
-      console.log("🏁 [Home] Stats loading completed. isLoadingStats:", false);
+      if (showLoading) {
+        setIsRefreshing(false);
+      }
     }
-  }, []);
+  }, [isRefreshing]);
 
-  // Generate particles only on client side to avoid hydration mismatch
+  // Generate particles only on client side
   useEffect(() => {
-    console.log("🎨 [Home] Setting up particles and fetching data...");
     setMounted(true);
     const generatedParticles = Array.from({ length: 20 }, () => ({
       width: Math.random() * 4 + 1,
@@ -104,18 +91,24 @@ export default function Home() {
       delay: Math.random() * 5,
     }));
     setParticles(generatedParticles);
-    console.log("✨ [Home] Generated", generatedParticles.length, "particles");
 
-    // Fetch supporter stats immediately
-    fetchSupporterStats();
+    // Initial fetch only once
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchSupporterStats(true);
+    }
+
+    // Cleanup
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
   }, [fetchSupporterStats]);
 
-  // Countdown to election day (August 9, 2027)
+  // Countdown to election day (August 10, 2027)
   useEffect(() => {
-    console.log("⏰ [Home] Setting up countdown timer...");
-
-    const electionDate = new Date(2027, 7, 9, 0, 0, 0);
-    console.log("📅 [Home] Election date set to:", electionDate.toISOString());
+    const electionDate = new Date(2027, 7, 10, 0, 0, 0);
 
     const updateCountdown = () => {
       const now = new Date();
@@ -133,70 +126,42 @@ export default function Home() {
 
     updateCountdown();
     const countdownInterval = setInterval(updateCountdown, 1000);
-    console.log("⏰ [Home] Countdown timer started");
 
-    return () => {
-      clearInterval(countdownInterval);
-      console.log("🛑 [Home] Countdown timer cleaned up");
-    };
+    return () => clearInterval(countdownInterval);
   }, []);
 
+  // Refresh stats - immediate update without animation
+  const refreshStats = useCallback(() => {
+    // Clear any pending timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
+    // Immediate refresh
+    fetchSupporterStats(true);
+  }, [fetchSupporterStats]);
+
   const handleOpenIebcModal = () => {
-    console.log("🔓 [Home] Opening IEBC verification modal");
     setShowIebcModal(true);
     setIframeError(false);
   };
-  const refreshStats = useCallback(() => {
-    console.log("🔄 Refreshing campaign stats after successful registration...");
-    fetchSupporterStats();
-  }, [fetchSupporterStats]);
 
-  // Loading spinner component
-  const LoadingSpinner = () => (
-    <div className="inline-flex flex-col items-center justify-center">
-      <div className="relative">
-        {/* Outer ring */}
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gold/20 animate-spin">
-          <div className="absolute top-0 left-0 w-16 h-16 md:w-20 md:h-20 rounded-full border-t-4 border-gold border-r-4 border-gold/30 animate-spin" />
-        </div>
-        {/* Inner pulsing dot */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <div className="w-3 h-3 md:w-4 md:h-4 bg-gold rounded-full animate-pulse" />
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-gold/80 animate-pulse">Loading...</p>
-    </div>
-  );
-
-
-  // Format display count - show loading skeleton or "Be the 1st one"
+  // Simple loading state
   const getDisplayText = () => {
-    if (isLoadingStats) {
-      return <LoadingSpinner />;
+    if (isLoadingStats && displayCount === 0) {
+      return <span className="text-4xl md:text-5xl lg:text-6xl font-black text-gold/30">Loading...</span>;
     }
-    if (displayCount === 0) {
-      return <span className="text-4xl md:text-5xl lg:text-6xl font-black">Be the 1st one!</span>;
+    if (displayCount === 0 && !isLoadingStats) {
+      return <span className="text-4xl md:text-5xl lg:text-6xl font-black">Be the 1st!</span>;
     }
     return <span className="text-5xl md:text-6xl lg:text-7xl font-black">{displayCount.toLocaleString()}</span>;
   };
 
-  // Get supporter count for stats row
   const getStatsCount = () => {
-    if (isLoadingStats) {
+    if (isLoadingStats && displayCount === 0) {
       return <div className="h-8 w-20 bg-gold/20 rounded animate-pulse mx-auto"></div>;
     }
     return displayCount === 0 ? "0" : displayCount.toLocaleString();
   };
-
-  console.log("🎯 [Home] Current state:", {
-    joinedCount,
-    displayCount,
-    isLoadingStats,
-    error,
-    showJoinModal,
-    showIebcModal,
-    timeLeft
-  });
 
   return (
     <main>
@@ -244,13 +209,11 @@ export default function Home() {
           )}
         </div>
 
-        {/* Hero Content - Responsive Layout */}
+        {/* Hero Content */}
         <div className="relative z-10 container mx-auto px-4 py-12 md:py-20 lg:py-24">
-
           {/* Mobile Layout */}
           <div className="block lg:hidden">
             <div className="mx-auto max-w-4xl space-y-6">
-
               {/* Hero Title */}
               <div className="animate-fade-up text-center opacity-0" style={{ animationDelay: "0.1s" }}>
                 <h1 className="font-montserrat text-3xl font-black leading-tight">
@@ -271,26 +234,20 @@ export default function Home() {
               <div className="animate-fade-up opacity-0" style={{ animationDelay: "0.15s" }}>
                 <Card className="relative overflow-hidden border border-gold/20 bg-bg-dark/90 shadow-xl backdrop-blur-sm">
                   <div className="absolute inset-0 bg-gradient-to-br from-gold/10 to-transparent" />
-
                   <div className="relative text-center">
                     <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-gold/15 px-3 py-1">
                       <Users className="h-3 w-3 text-gold" />
                       <span className="text-xs font-bold text-gold">TEAM MULILA</span>
                     </div>
-
-                    <div className="text-5xl font-black text-gold">
-                      {getDisplayText()}
-                    </div>
-
+                    <div className="text-5xl font-black text-gold">{getDisplayText()}</div>
                     <p className="mt-1 text-sm font-semibold text-text-light">
-                      {isLoadingStats ? "Loading supporters..." : (displayCount === 0 ? "Join the movement today!" : "Strong Supporters & Growing")}
+                      {isLoadingStats && displayCount === 0 ? "Loading..." : (displayCount === 0 ? "Join the movement today!" : "Strong Supporters & Growing")}
                     </p>
-
                     <div className="mx-auto mt-3 max-w-xs">
                       <div className="h-1.5 overflow-hidden rounded-full bg-gold/20">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-1000"
-                          style={{ width: isLoadingStats ? "0%" : `${Math.min(100, (displayCount / 200000) * 100)}%` }}
+                          style={{ width: isLoadingStats && displayCount === 0 ? "0%" : `${Math.min(100, (displayCount / 200000) * 100)}%` }}
                         />
                       </div>
                       <p className="mt-1 text-xs text-text-dim">Target: 200,000 Supporters</p>
@@ -307,12 +264,12 @@ export default function Home() {
                 </div>
                 <div className="w-px h-8 bg-gold/20" />
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gold">{isLoadingStats ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse mx-auto"></div> : stats.constituencies}</div>
+                  <div className="text-xl font-bold text-gold">{isLoadingStats && displayCount === 0 ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse mx-auto"></div> : stats.constituencies}</div>
                   <div className="text-[10px] text-text-dim">Constituencies</div>
                 </div>
                 <div className="w-px h-8 bg-gold/20" />
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gold">{isLoadingStats ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse mx-auto"></div> : `${stats.wards}+`}</div>
+                  <div className="text-xl font-bold text-gold">{isLoadingStats && displayCount === 0 ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse mx-auto"></div> : `${stats.wards}+`}</div>
                   <div className="text-[10px] text-text-dim">Wards</div>
                 </div>
               </div>
@@ -346,7 +303,7 @@ export default function Home() {
                       <div className="text-[10px] text-text-dim">Secs</div>
                     </div>
                   </div>
-                  <p className="text-[10px] text-text-dim">August 9, 2027</p>
+                  <p className="text-[10px] text-text-dim">August 10, 2027</p>
 
                   <button
                     onClick={handleOpenIebcModal}
@@ -362,9 +319,11 @@ export default function Home() {
               {/* CTA Buttons */}
               <div className="animate-fade-up flex flex-col gap-3 sm:flex-row sm:justify-center opacity-0" style={{ animationDelay: "0.35s" }}>
                 <Button variant="primary" onClick={() => setShowJoinModal(true)}>
+                  <Users className="h-4 w-4" />
                   Join The Movement
                 </Button>
                 <Button variant="secondary" onClick={() => document.getElementById("support")?.scrollIntoView({ behavior: "smooth" })}>
+                  <Heart className="h-4 w-4" />
                   Support Us
                 </Button>
               </div>
@@ -385,7 +344,6 @@ export default function Home() {
           {/* Desktop Layout */}
           <div className="hidden lg:block">
             <div className="grid grid-cols-2 gap-16 items-center min-h-[80vh]">
-
               {/* Left Column - Hero Text */}
               <div className="space-y-8">
                 <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 backdrop-blur-sm opacity-0" style={{ animationDelay: "0.1s" }}>
@@ -433,7 +391,7 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-gold" />
                     <div>
-                      <div className="text-xl font-bold text-text-light">{isLoadingStats ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse"></div> : stats.constituencies}</div>
+                      <div className="text-xl font-bold text-text-light">{isLoadingStats && displayCount === 0 ? <div className="h-6 w-8 bg-gold/20 rounded animate-pulse"></div> : stats.constituencies}</div>
                       <div className="text-xs text-text-dim">Constituencies</div>
                     </div>
                   </div>
@@ -452,7 +410,7 @@ export default function Home() {
                       <div><div className="text-2xl font-bold text-gold">{timeLeft.minutes}</div><div className="text-xs text-text-dim">Mins</div></div>
                       <div><div className="text-2xl font-bold text-gold">{timeLeft.seconds}</div><div className="text-xs text-text-dim">Secs</div></div>
                     </div>
-                    <p className="text-center text-xs text-text-dim">August 9, 2027 - Kitui County Goes to Polls</p>
+                    <p className="text-center text-xs text-text-dim">August 10, 2027 - Kitui County Goes to Polls</p>
 
                     <button
                       onClick={handleOpenIebcModal}
@@ -467,9 +425,11 @@ export default function Home() {
 
                 <div className="animate-fade-up flex gap-4 opacity-0" style={{ animationDelay: "0.6s" }}>
                   <Button variant="primary" onClick={() => setShowJoinModal(true)}>
+                    <Users className="h-4 w-4" />
                     Join The Movement
                   </Button>
                   <Button variant="secondary" onClick={() => document.getElementById("support")?.scrollIntoView({ behavior: "smooth" })}>
+                    <Heart className="h-4 w-4" />
                     Support Us
                   </Button>
                 </div>
@@ -497,24 +457,30 @@ export default function Home() {
 
                     <div className="relative">
                       <div className="text-7xl font-black text-gold lg:text-8xl">
-                        {isLoadingStats ? <LoadingSpinner /> : (displayCount === 0 ? "Be the 1st!" : displayCount.toLocaleString())}
+                        {isLoadingStats && displayCount === 0 ? (
+                          <span className="text-6xl text-gold/30">Loading...</span>
+                        ) : displayCount === 0 ? (
+                          "Be the 1st!"
+                        ) : (
+                          displayCount.toLocaleString()
+                        )}
                       </div>
                       <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full bg-gold/20 blur-xl animate-pulse" />
                     </div>
 
                     <p className="mt-3 text-sm font-medium text-text-light">
-                      {isLoadingStats ? "Loading campaign data..." : (displayCount === 0 ? "Join the movement today!" : "Strong Supporters & Growing Daily")}
+                      {isLoadingStats && displayCount === 0 ? "Loading campaign data..." : (displayCount === 0 ? "Join the movement today!" : "Strong Supporters & Growing Daily")}
                     </p>
 
                     <div className="mx-auto mt-5 max-w-sm">
                       <div className="flex justify-between text-xs text-text-dim mb-1">
                         <span>Progress to Goal</span>
-                        <span>{isLoadingStats ? "..." : `${Math.min(100, Math.floor((displayCount / 200000) * 100))}%`}</span>
+                        <span>{isLoadingStats && displayCount === 0 ? "..." : `${Math.min(100, Math.floor((displayCount / 200000) * 100))}%`}</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-gold/20">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-1000"
-                          style={{ width: isLoadingStats ? "0%" : `${Math.min(100, (displayCount / 200000) * 100)}%` }}
+                          style={{ width: isLoadingStats && displayCount === 0 ? "0%" : `${Math.min(100, (displayCount / 200000) * 100)}%` }}
                         />
                       </div>
                       <p className="mt-2 text-xs text-text-dim">Target: 200,000 Supporters</p>
@@ -628,8 +594,8 @@ export default function Home() {
 
       {/* Other Sections */}
       <EventsSection />
-      <GallerySection />
       <SupportSection />
+      <GallerySection />
 
       {/* Footer */}
       <footer className="border-t border-gold/20 bg-bg-dark py-8">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Phone, AlertCircle, Key, Clock, Shield } from "lucide-react";
+import { X, Phone, AlertCircle, Key, Clock, Shield, CheckCircle } from "lucide-react";
 import { supabase } from "../../lib/supabase/client";
 import { PhoneValidator } from "@/lib/phone-validator";
 
@@ -31,6 +31,9 @@ export default function OTPVerificationModal({
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [autoVerified, setAutoVerified] = useState(false);
+  // Use any to bypass TypeScript issues
+  const [verificationStatus, setVerificationStatus] = useState<any>("idle");
 
   const phoneValidator = PhoneValidator.getInstance();
 
@@ -55,6 +58,7 @@ export default function OTPVerificationModal({
 
     setIsLoading(true);
     setError("");
+    setVerificationStatus("verifying");
 
     try {
       console.log("📤 Sending OTP request...");
@@ -62,26 +66,42 @@ export default function OTPVerificationModal({
       const response = await supabase.functions.invoke('send-otp', {
         body: JSON.stringify({
           phone: phoneNumber,
-          email: email,
+          email: email || null,
           deviceFingerprint: deviceFingerprint || "unknown"
         })
       });
 
       console.log("📨 Send OTP Response:", response);
 
-      // IMPORTANT: Supabase returns errors in `error` object, NOT in `data`
       if (response.error) {
         console.error("Function error:", response.error);
         setError(response.error.message || "Failed to send verification code. Please try again.");
         setIsLoading(false);
+        setVerificationStatus("error");
         return;
       }
 
-      // Check response data
       if (response.data && response.data.success) {
+        // Check if this was auto-verified
+        if (response.data.autoVerified) {
+          console.log("✅ Auto-verified!");
+          setAutoVerified(true);
+          setVerificationStatus("auto");
+          setCanResend(false);
+
+          // Auto-verify success - proceed
+          setTimeout(() => {
+            onVerified();
+            onClose();
+          }, 1500);
+          return;
+        }
+
+        // Normal OTP flow
         setCanResend(false);
         setTimeLeft(60);
         setRemainingAttempts(response.data.remainingAttempts || 3);
+        setVerificationStatus("idle");
 
         const timer = setInterval(() => {
           setTimeLeft(prev => {
@@ -94,16 +114,18 @@ export default function OTPVerificationModal({
           });
         }, 1000);
       } else if (response.data && response.data.error) {
-        // This handles the case where edge function returns 200 but with error flag
         const errorMessage = response.data.message || response.data.error;
         setError(errorMessage || "Failed to send verification code. Please try again.");
+        setVerificationStatus("error");
       } else {
         setError("Failed to send verification code. Please try again.");
+        setVerificationStatus("error");
       }
 
     } catch (err) {
       console.error("Send OTP error:", err);
       setError("Network error. Please check your connection and try again.");
+      setVerificationStatus("error");
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +141,7 @@ export default function OTPVerificationModal({
 
     setIsLoading(true);
     setError("");
+    setVerificationStatus("verifying");
 
     try {
       console.log("🔐 Verifying OTP...");
@@ -126,7 +149,7 @@ export default function OTPVerificationModal({
       const response = await supabase.functions.invoke('verify-otp', {
         body: JSON.stringify({
           phone: phoneNumber,
-          email: email,
+          email: email || null,
           otp: enteredOTP,
           deviceFingerprint: deviceFingerprint || "unknown"
         })
@@ -134,32 +157,37 @@ export default function OTPVerificationModal({
 
       console.log("📨 Verify OTP Response:", response);
 
-      // IMPORTANT: Supabase returns errors in `error` object
       if (response.error) {
         console.error("Function error:", response.error);
-
-        // Try to parse the error message from the response
-        let errorMessage = "Verification failed. Please try again.";
-
-        setError(errorMessage);
+        setError("Verification failed. Please try again.");
         setIsLoading(false);
+        setVerificationStatus("error");
         return;
       }
 
-      // Check response data
       if (response.data && response.data.success) {
+        // Check if this was auto-verified
+        if (response.data.autoVerified) {
+          setAutoVerified(true);
+          setVerificationStatus("auto");
+        } else {
+          setVerificationStatus("success");
+        }
+
         // Reset phone attempts on successful verification
         phoneValidator.resetPhoneAttempts(phoneNumber);
-        onVerified();
-        onClose();
+
+        // Show success briefly then proceed
+        setTimeout(() => {
+          onVerified();
+          onClose();
+        }, 1000);
+
       } else if (response.data && response.data.error) {
-        // Display the exact error message from the edge function
         const remaining = response.data.remainingAttempts;
         setRemainingAttempts(remaining !== undefined ? remaining : 1);
-
-        // Show the actual message from the edge function
-        const errorMessage = response.data.message || response.data.error;
-        setError(errorMessage);
+        setError(response.data.message || response.data.error);
+        setVerificationStatus("error");
 
         if (remaining === 0) {
           setIsLocked(true);
@@ -167,11 +195,13 @@ export default function OTPVerificationModal({
         }
       } else {
         setError("Verification failed. Please try again.");
+        setVerificationStatus("error");
       }
 
     } catch (err) {
       console.error("Verify OTP error:", err);
       setError("Network error. Please check your connection and try again.");
+      setVerificationStatus("error");
     } finally {
       setIsLoading(false);
     }
@@ -218,10 +248,38 @@ export default function OTPVerificationModal({
   useEffect(() => {
     if (!isOpen) {
       setIsInitialized(false);
+      setAutoVerified(false);
+      setVerificationStatus("idle");
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // Auto-verified state - show success
+  if (autoVerified || verificationStatus === "auto") {
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-fade-in">
+        <div className="relative w-full max-w-md bg-gradient-to-br from-bg-dark to-bg-card rounded-2xl border border-green-500/30 shadow-2xl animate-scale-in">
+          <div className="text-center p-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/20 mb-4">
+              <CheckCircle className="h-10 w-10 text-green-400" />
+            </div>
+            <h3 className="font-montserrat text-2xl font-bold text-green-400">Phone Verified!</h3>
+            <p className="mt-2 text-sm text-text-dim">
+              Your phone number has been verified successfully.
+              <br />
+              <span className="text-gold">{phoneNumber}</span>
+            </p>
+            <div className="mt-4">
+              <div className="animate-pulse text-xs text-text-dim">
+                Continuing...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-fade-in">
@@ -243,9 +301,16 @@ export default function OTPVerificationModal({
             <br />
             <span className="font-semibold text-gold">{phoneNumber}</span>
           </p>
-          <p className="mt-1 text-xs text-text-dim">
-            For account: <span className="text-gold">{email}</span>
-          </p>
+          {email && (
+            <p className="mt-1 text-xs text-text-dim">
+              For account: <span className="text-gold">{email}</span>
+            </p>
+          )}
+          {verificationStatus === "auto" && (
+            <p className="mt-2 text-xs text-green-400">
+              ✓ Auto-verified! Continuing...
+            </p>
+          )}
         </div>
 
         <div className="p-6 space-y-6">
@@ -259,9 +324,9 @@ export default function OTPVerificationModal({
                 value={digit}
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                disabled={isLocked}
+                disabled={isLocked || verificationStatus === "auto" || verificationStatus === "success"}
                 className="h-12 w-12 text-center text-2xl font-bold rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none transition-colors disabled:opacity-50"
-                autoFocus={index === 0 && !isLocked}
+                autoFocus={index === 0 && !isLocked && verificationStatus !== "auto" && verificationStatus !== "success"}
               />
             ))}
           </div>
@@ -281,14 +346,21 @@ export default function OTPVerificationModal({
             </div>
           )}
 
-          {error && !isLocked && (
+          {error && !isLocked && verificationStatus !== "auto" && verificationStatus !== "success" && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
               <AlertCircle className="h-4 w-4 text-red-400" />
               <p className="text-xs text-red-400">{error}</p>
             </div>
           )}
 
-          {!isLocked && (
+          {verificationStatus === "success" && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              <p className="text-xs text-green-400">Phone verified successfully!</p>
+            </div>
+          )}
+
+          {!isLocked && verificationStatus !== "auto" && verificationStatus !== "success" && (
             <div className="text-center">
               {canResend ? (
                 <button
@@ -308,7 +380,7 @@ export default function OTPVerificationModal({
 
           <button
             onClick={verifyOTP}
-            disabled={isLoading || otp.some(digit => !digit) || isLocked}
+            disabled={isLoading || otp.some(digit => !digit) || isLocked || verificationStatus === "auto" || verificationStatus === "success"}
             className="w-full py-3 rounded-full bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold transition-all hover:shadow-lg hover:shadow-gold/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="flex items-center justify-center gap-2">
@@ -316,6 +388,11 @@ export default function OTPVerificationModal({
                 <>
                   <div className="h-4 w-4 border-2 border-bg-dark border-t-transparent rounded-full animate-spin" />
                   Verifying...
+                </>
+              ) : verificationStatus === "auto" || verificationStatus === "success" ? (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Verified!
                 </>
               ) : (
                 <>
@@ -328,7 +405,7 @@ export default function OTPVerificationModal({
 
           <div className="flex items-center justify-center gap-2 text-center text-[10px] text-text-dim">
             <Shield className="h-3 w-3" />
-            <span>Your phone number will be verified and linked to this email address</span>
+            <span>Your phone number will be verified and linked to this account</span>
           </div>
         </div>
       </div>
