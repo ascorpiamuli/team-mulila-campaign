@@ -69,14 +69,12 @@ export default function AdminMessages() {
 
   const fetchTemplates = async () => {
     try {
-      // Try to fetch from email_templates, fallback to empty array
       const { data, error } = await supabase
         .from("email_templates")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error && error.code === 'PGRST205') {
-        // Table doesn't exist - use empty array
         setTemplates([]);
         return;
       }
@@ -88,7 +86,6 @@ export default function AdminMessages() {
     }
   };
 
-  // Use event_message_logs instead of sent_emails
   const fetchMessageLogs = async () => {
     try {
       const { data, error } = await supabase
@@ -98,7 +95,6 @@ export default function AdminMessages() {
         .limit(50);
 
       if (error && error.code === 'PGRST205') {
-        // Table doesn't exist yet
         setMessageLogs([]);
         return;
       }
@@ -113,11 +109,9 @@ export default function AdminMessages() {
   const fetchRecipients = async () => {
     setIsLoading(true);
     try {
-      // Fetch from event_registrations and campaign_supporters
       let supporters: any[] = [];
       let registrations: any[] = [];
 
-      // Get supporters
       const { data: supportersData, error: supportersError } = await supabase
         .from("campaign_supporters")
         .select("full_name, email, constituency")
@@ -127,7 +121,6 @@ export default function AdminMessages() {
         supporters = supportersData;
       }
 
-      // Get event registrations
       const { data: registrationsData, error: registrationsError } = await supabase
         .from("event_registrations")
         .select("full_name, email, constituency")
@@ -137,7 +130,6 @@ export default function AdminMessages() {
         registrations = registrationsData;
       }
 
-      // Combine and deduplicate
       const allRecipients = [...supporters, ...registrations];
       const uniqueRecipients = allRecipients.reduce((acc: EmailRecipient[], curr) => {
         if (!acc.find(r => r.email === curr.email)) {
@@ -150,7 +142,6 @@ export default function AdminMessages() {
         return acc;
       }, []);
 
-      // Filter based on recipient type
       let filtered = uniqueRecipients;
       if (recipientType === "specific" && selectedRecipient) {
         filtered = uniqueRecipients.filter(r => r.email === selectedRecipient);
@@ -196,7 +187,6 @@ export default function AdminMessages() {
     try {
       let emailRecipients = [...recipients];
 
-      // Add custom recipient if specified
       if (recipientType === "custom" && customEmail) {
         emailRecipients = [{
           email: customEmail,
@@ -211,7 +201,6 @@ export default function AdminMessages() {
         return;
       }
 
-      // Send via Edge Function
       const { data, error } = await supabase.functions.invoke('send-event-messages', {
         body: JSON.stringify({
           eventId: null,
@@ -221,7 +210,7 @@ export default function AdminMessages() {
           recipients: emailRecipients.map(r => ({
             email: r.email,
             name: r.name,
-            phone: "" // No phone for bulk messages
+            phone: ""
           })),
           sendSMS: sendSMS
         })
@@ -235,10 +224,8 @@ export default function AdminMessages() {
           setSuccessMessage(prev => prev + ` SMS notifications sent to ${data.data?.sms?.success || 0} recipients`);
         }
 
-        // Refresh message logs
         await fetchMessageLogs();
 
-        // Reset form
         setSubject("");
         setMessage("");
         setShowComposeModal(false);
@@ -295,46 +282,46 @@ export default function AdminMessages() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="font-montserrat text-2xl font-bold text-gold">Messages</h1>
-          <p className="text-text-dim text-sm mt-1">Send bulk emails to supporters, volunteers, donors, and ambassadors</p>
+          <h1 className="font-montserrat text-xl sm:text-2xl font-bold text-gold">Messages</h1>
+          <p className="text-text-dim text-xs sm:text-sm mt-1">Send bulk emails to supporters, volunteers, donors, and ambassadors</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 text-text-dim hover:text-gold hover:bg-gold/10 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-gold/20 text-text-dim hover:text-gold hover:bg-gold/10 transition-colors text-sm"
           >
             <Clock className="h-4 w-4" />
-            {showHistory ? "Compose" : "View History"}
+            <span className="hidden xs:inline">{showHistory ? "Compose" : "View History"}</span>
           </button>
           {!showHistory && (
             <button
               onClick={() => setShowComposeModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg transition-all"
+              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg transition-all text-sm"
             >
               <Send className="h-4 w-4" />
-              Compose Message
+              <span className="hidden xs:inline">Compose</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid - Responsive */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {statCards.map((card, idx) => (
           <div key={idx} className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-gold to-gold-light rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-            <div className="relative bg-bg-card/50 backdrop-blur-sm rounded-xl border border-gold/20 p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-r ${card.color}`}>
-                  <card.icon className="h-6 w-6 text-white" />
+            <div className="relative bg-bg-card/50 backdrop-blur-sm rounded-xl border border-gold/20 p-3 md:p-6">
+              <div className="flex justify-between items-start mb-2 md:mb-4">
+                <div className={`p-1.5 md:p-3 rounded-xl bg-gradient-to-r ${card.color}`}>
+                  <card.icon className="h-4 w-4 md:h-6 md:w-6 text-white" />
                 </div>
               </div>
-              <p className="text-text-dim text-sm">{card.label}</p>
-              <p className="text-3xl font-bold text-text-light mt-1">{card.value}</p>
+              <p className="text-text-dim text-[10px] md:text-sm">{card.label}</p>
+              <p className="text-lg md:text-3xl font-bold text-text-light mt-0.5 md:mt-1">{card.value}</p>
             </div>
           </div>
         ))}
@@ -343,53 +330,53 @@ export default function AdminMessages() {
       {/* Success/Error Messages */}
       {successMessage && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 animate-fade-in">
-          <CheckCircle className="h-4 w-4 text-green-400" />
+          <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
           <p className="text-sm text-green-400">{successMessage}</p>
         </div>
       )}
       {errorMessage && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 animate-fade-in">
-          <AlertCircle className="h-4 w-4 text-red-400" />
+          <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
           <p className="text-sm text-red-400">{errorMessage}</p>
         </div>
       )}
 
-      {/* History View - Using event_message_logs */}
+      {/* History View - Responsive Table */}
       {showHistory ? (
         <div className="bg-bg-card/50 rounded-xl border border-gold/20 overflow-hidden">
-          <div className="p-4 border-b border-gold/20">
-            <h2 className="font-montserrat text-lg font-bold text-text-light">Sent Messages History</h2>
-            <p className="text-text-dim text-sm">Recently sent messages and their status</p>
+          <div className="p-3 md:p-4 border-b border-gold/20">
+            <h2 className="font-montserrat text-base md:text-lg font-bold text-text-light">Sent Messages History</h2>
+            <p className="text-text-dim text-xs md:text-sm">Recently sent messages and their status</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead className="bg-gold/10">
                 <tr>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Subject</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Recipients</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Status</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Email</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">SMS</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Date</th>
-                  <th className="p-4 text-left text-sm font-semibold text-gold">Actions</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold">Subject</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold hidden sm:table-cell">Recipients</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold hidden md:table-cell">Status</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold hidden lg:table-cell">Email</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold hidden xl:table-cell">SMS</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold hidden sm:table-cell">Date</th>
+                  <th className="p-2 md:p-4 text-left text-xs md:text-sm font-semibold text-gold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {messageLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gold/10 hover:bg-gold/5 transition-colors">
-                    <td className="p-4 text-text-light font-medium">{log.subject}</td>
-                    <td className="p-4 text-text-dim">{log.recipients_count} recipients</td>
-                    <td className="p-4">{getMessageStatusBadge(log.status)}</td>
-                    <td className="p-4 text-text-dim">
+                    <td className="p-2 md:p-4 text-text-light font-medium text-xs md:text-sm max-w-[100px] md:max-w-none truncate">{log.subject}</td>
+                    <td className="p-2 md:p-4 text-text-dim text-xs md:text-sm hidden sm:table-cell">{log.recipients_count}</td>
+                    <td className="p-2 md:p-4 hidden md:table-cell">{getMessageStatusBadge(log.status)}</td>
+                    <td className="p-2 md:p-4 text-text-dim text-xs md:text-sm hidden lg:table-cell">
                       ✅ {log.email_success} / ❌ {log.email_failed}
                     </td>
-                    <td className="p-4 text-text-dim">
+                    <td className="p-2 md:p-4 text-text-dim text-xs md:text-sm hidden xl:table-cell">
                       {log.sms_sent ? `✅ ${log.sms_success} / ❌ ${log.sms_failed}` : '—'}
                     </td>
-                    <td className="p-4 text-text-dim text-sm">
-                      {new Date(log.sent_at).toLocaleString()}
+                    <td className="p-2 md:p-4 text-text-dim text-xs md:text-sm hidden sm:table-cell">
+                      {new Date(log.sent_at).toLocaleDateString()}
                     </td>
-                    <td className="p-4">
+                    <td className="p-2 md:p-4">
                       <button
                         onClick={() => {
                           setSubject(log.subject);
@@ -414,13 +401,13 @@ export default function AdminMessages() {
           </div>
         </div>
       ) : (
-        /* Compose View - Recipient Selection */
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        /* Compose View - Responsive Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Recipient Type Selection */}
-          <div className="md:col-span-1 space-y-4">
-            <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-              <h3 className="font-montserrat font-semibold text-text-light mb-3">Select Recipients</h3>
-              <div className="space-y-2">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+              <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base mb-3">Select Recipients</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 md:gap-2">
                 {[
                   { id: "all", label: "All Supporters", icon: Users, color: "text-gold" },
                   { id: "volunteers", label: "Volunteers", icon: Heart, color: "text-green-400" },
@@ -437,23 +424,23 @@ export default function AdminMessages() {
                         fetchRecipients();
                       }
                     }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${recipientType === option.id
-                      ? "bg-gold/10 border border-gold/30"
-                      : "hover:bg-gold/5"
+                    className={`w-full flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg transition-all duration-300 text-xs md:text-sm ${recipientType === option.id
+                        ? "bg-gold/10 border border-gold/30"
+                        : "hover:bg-gold/5"
                       }`}
                   >
-                    <option.icon className={`h-5 w-5 ${option.color}`} />
-                    <span className="text-text-light text-sm">{option.label}</span>
+                    <option.icon className={`h-4 w-4 md:h-5 md:w-5 ${option.color} flex-shrink-0`} />
+                    <span className="text-text-light truncate">{option.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Recipients List */}
+            {/* Recipients List - Responsive */}
             {(recipientType === "all" || recipientType === "volunteers" || recipientType === "donors" || recipientType === "ambassadors") && (
-              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
+              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-montserrat font-semibold text-text-light">Recipients</h3>
+                  <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base">Recipients</h3>
                   <button
                     onClick={fetchRecipients}
                     className="p-1 text-gold hover:text-gold-light transition-colors"
@@ -461,17 +448,17 @@ export default function AdminMessages() {
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="text-2xl font-bold text-gold mb-2">{recipientCount}</p>
-                <p className="text-text-dim text-sm">people will receive this message</p>
+                <p className="text-xl md:text-2xl font-bold text-gold mb-2">{recipientCount}</p>
+                <p className="text-text-dim text-xs md:text-sm">people will receive this message</p>
                 {recipientCount > 0 && (
-                  <div className="mt-3 max-h-40 overflow-y-auto space-y-1">
-                    {recipients.slice(0, 10).map((r, idx) => (
+                  <div className="mt-3 max-h-32 md:max-h-40 overflow-y-auto space-y-1">
+                    {recipients.slice(0, 5).map((r, idx) => (
                       <div key={idx} className="text-xs text-text-dim truncate">
                         {r.name} - {r.email}
                       </div>
                     ))}
-                    {recipientCount > 10 && (
-                      <div className="text-xs text-gold mt-1">+{recipientCount - 10} more</div>
+                    {recipientCount > 5 && (
+                      <div className="text-xs text-gold mt-1">+{recipientCount - 5} more</div>
                     )}
                   </div>
                 )}
@@ -480,15 +467,15 @@ export default function AdminMessages() {
 
             {/* Specific Person Selection */}
             {recipientType === "specific" && (
-              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-                <h3 className="font-montserrat font-semibold text-text-light mb-3">Select Person</h3>
+              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+                <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base mb-3">Select Person</h3>
                 <select
                   value={selectedRecipient}
                   onChange={(e) => {
                     setSelectedRecipient(e.target.value);
                     fetchRecipients();
                   }}
-                  className="w-full px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none mb-3"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none text-sm mb-3"
                 >
                   <option value="">Select a supporter</option>
                   {recipients.map((r, idx) => (
@@ -505,21 +492,21 @@ export default function AdminMessages() {
 
             {/* Custom Email */}
             {recipientType === "custom" && (
-              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-                <h3 className="font-montserrat font-semibold text-text-light mb-3">Custom Recipient</h3>
+              <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+                <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base mb-3">Custom Recipient</h3>
                 <input
                   type="text"
                   placeholder="Full Name"
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none mb-3"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none text-sm mb-3"
                 />
                 <input
                   type="email"
                   placeholder="Email Address"
                   value={customEmail}
                   onChange={(e) => setCustomEmail(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none text-sm"
                 />
                 {customEmail && (
                   <p className="text-xs text-gold mt-2">1 person will receive this message</p>
@@ -528,30 +515,30 @@ export default function AdminMessages() {
             )}
           </div>
 
-          {/* Message Preview */}
-          <div className="md:col-span-3">
-            <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-montserrat font-semibold text-text-light">Message Preview</h3>
+          {/* Message Preview - Responsive */}
+          <div className="lg:col-span-3">
+            <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4 md:p-6">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+                <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base">Message Preview</h3>
                 <button
                   onClick={() => setShowTemplates(!showTemplates)}
-                  className="flex items-center gap-2 px-3 py-1 rounded-lg border border-gold/20 text-gold hover:bg-gold/10 transition-colors text-sm"
+                  className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 rounded-lg border border-gold/20 text-gold hover:bg-gold/10 transition-colors text-xs md:text-sm"
                 >
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-3 w-3 md:h-4 md:w-4" />
                   Templates
                 </button>
               </div>
 
               {/* Templates Dropdown */}
               {showTemplates && templates.length > 0 && (
-                <div className="mb-4 p-3 bg-gold/5 rounded-lg border border-gold/20">
+                <div className="mb-4 p-2 md:p-3 bg-gold/5 rounded-lg border border-gold/20">
                   <p className="text-xs text-gold mb-2">Select a template:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {templates.map((template) => (
                       <button
                         key={template.id}
                         onClick={() => loadTemplate(template.id)}
-                        className="px-3 py-1 rounded-full bg-gold/10 text-gold text-xs hover:bg-gold/20 transition-colors"
+                        className="px-2 md:px-3 py-1 rounded-full bg-gold/10 text-gold text-[10px] md:text-xs hover:bg-gold/20 transition-colors"
                       >
                         {template.name}
                       </button>
@@ -561,32 +548,32 @@ export default function AdminMessages() {
               )}
 
               {/* Subject */}
-              <div className="mb-4">
+              <div className="mb-3 md:mb-4">
                 <label className="block text-xs font-semibold text-gold mb-1">Subject</label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Enter email subject..."
-                  className="w-full px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none text-sm"
                 />
               </div>
 
               {/* Message Body */}
-              <div className="mb-4">
+              <div className="mb-3 md:mb-4">
                 <label className="block text-xs font-semibold text-gold mb-1">Message</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  rows={12}
+                  rows={8}
                   placeholder="Write your message here... You can use HTML for formatting."
-                  className="w-full px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none resize-none font-mono text-sm"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none resize-none font-mono text-xs md:text-sm"
                 />
               </div>
 
               {/* SMS Toggle */}
-              <div className="mb-4">
-                <label className="flex items-center gap-2 text-text-light text-sm cursor-pointer">
+              <div className="mb-3 md:mb-4">
+                <label className="flex items-center gap-2 text-text-light text-xs md:text-sm cursor-pointer">
                   <input
                     type="checkbox"
                     checked={sendSMS}
@@ -598,19 +585,19 @@ export default function AdminMessages() {
               </div>
 
               {/* Preview Section */}
-              <div className="mt-4 p-4 bg-bg-dark/30 rounded-lg border border-gold/10">
+              <div className="mt-3 md:mt-4 p-3 md:p-4 bg-bg-dark/30 rounded-lg border border-gold/10">
                 <h4 className="text-xs font-semibold text-gold mb-2">Preview</h4>
                 <div className="prose prose-invert max-w-none">
-                  <div className="text-text-light whitespace-pre-wrap">{message}</div>
+                  <div className="text-text-light whitespace-pre-wrap text-xs md:text-sm">{message}</div>
                 </div>
               </div>
 
               {/* Send Button */}
-              <div className="flex gap-3 mt-6">
+              <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mt-4 md:mt-6">
                 <button
                   onClick={sendEmails}
                   disabled={isLoading || (!subject || !message) || (recipientType === "custom" && !customEmail) || (recipientType !== "custom" && recipientCount === 0)}
-                  className="flex-1 py-3 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 py-2 md:py-3 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
                     <>
@@ -630,12 +617,12 @@ export default function AdminMessages() {
         </div>
       )}
 
-      {/* Compose Modal */}
+      {/* Compose Modal - Responsive */}
       {showComposeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
           <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-bg-card rounded-2xl border border-gold/30 shadow-2xl">
-            <div className="sticky top-0 bg-bg-card border-b border-gold/20 p-4 flex justify-between items-center">
-              <h2 className="font-montserrat text-xl font-bold text-gold">Compose Message</h2>
+            <div className="sticky top-0 bg-bg-card border-b border-gold/20 p-3 md:p-4 flex justify-between items-center">
+              <h2 className="font-montserrat text-lg md:text-xl font-bold text-gold">Compose Message</h2>
               <button
                 onClick={() => setShowComposeModal(false)}
                 className="p-1 rounded-full hover:bg-gold/10 transition-colors"
@@ -643,16 +630,83 @@ export default function AdminMessages() {
                 <X className="h-5 w-5 text-text-dim" />
               </button>
             </div>
-            <div className="p-6">
-              {/* Same content as above but in modal */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Recipient selection */}
                 <div className="space-y-4">
-                  {/* ... recipient selection UI ... */}
+                  {/* Same content as above but in modal */}
+                  <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+                    <h3 className="font-montserrat font-semibold text-text-light text-sm md:text-base mb-3">Select Recipients</h3>
+                    <div className="space-y-1.5 md:space-y-2">
+                      {[
+                        { id: "all", label: "All Supporters", icon: Users, color: "text-gold" },
+                        { id: "volunteers", label: "Volunteers", icon: Heart, color: "text-green-400" },
+                        { id: "donors", label: "Donors", icon: DollarSign, color: "text-blue-400" },
+                        { id: "ambassadors", label: "Ambassadors", icon: Megaphone, color: "text-purple-400" },
+                        { id: "specific", label: "Specific Person", icon: User, color: "text-yellow-400" },
+                        { id: "custom", label: "Custom Email", icon: Mail, color: "text-orange-400" },
+                      ].map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setRecipientType(option.id);
+                            if (option.id !== "specific" && option.id !== "custom") {
+                              fetchRecipients();
+                            }
+                          }}
+                          className={`w-full flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg transition-all duration-300 text-xs md:text-sm ${recipientType === option.id
+                              ? "bg-gold/10 border border-gold/30"
+                              : "hover:bg-gold/5"
+                            }`}
+                        >
+                          <option.icon className={`h-4 w-4 md:h-5 md:w-5 ${option.color} flex-shrink-0`} />
+                          <span className="text-text-light truncate">{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 {/* Message composition */}
-                <div className="md:col-span-2">
-                  {/* ... message UI ... */}
+                <div className="lg:col-span-2">
+                  <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4 md:p-6">
+                    <div className="mb-3 md:mb-4">
+                      <label className="block text-xs font-semibold text-gold mb-1">Subject</label>
+                      <input
+                        type="text"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder="Enter email subject..."
+                        className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div className="mb-3 md:mb-4">
+                      <label className="block text-xs font-semibold text-gold mb-1">Message</label>
+                      <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        rows={8}
+                        placeholder="Write your message here..."
+                        className="w-full px-3 md:px-4 py-2 rounded-lg border border-gold/20 bg-bg-dark/50 text-text-light focus:border-gold focus:outline-none resize-none font-mono text-xs md:text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={sendEmails}
+                      disabled={isLoading || (!subject || !message)}
+                      className="w-full py-2 md:py-3 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="h-4 w-4 border-2 border-bg-dark border-t-transparent rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          Send Message
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -660,12 +714,12 @@ export default function AdminMessages() {
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* Preview Modal - Responsive */}
       {showPreviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-bg-card rounded-2xl border border-gold/30 shadow-2xl">
-            <div className="sticky top-0 bg-bg-card border-b border-gold/20 p-4 flex justify-between items-center">
-              <h2 className="font-montserrat text-xl font-bold text-gold">Email Preview</h2>
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-bg-card rounded-2xl border border-gold/30 shadow-2xl">
+            <div className="sticky top-0 bg-bg-card border-b border-gold/20 p-3 md:p-4 flex justify-between items-center">
+              <h2 className="font-montserrat text-lg md:text-xl font-bold text-gold">Email Preview</h2>
               <button
                 onClick={() => setShowPreviewModal(false)}
                 className="p-1 rounded-full hover:bg-gold/10 transition-colors"
@@ -673,14 +727,14 @@ export default function AdminMessages() {
                 <X className="h-5 w-5 text-text-dim" />
               </button>
             </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-text-light mb-2">{subject}</h3>
+            <div className="p-4 md:p-6">
+              <h3 className="text-base md:text-lg font-semibold text-text-light mb-2">{subject}</h3>
               <div className="prose prose-invert max-w-none">
-                <div className="text-text-light whitespace-pre-wrap">{message}</div>
+                <div className="text-text-light whitespace-pre-wrap text-sm md:text-base">{message}</div>
               </div>
               <button
                 onClick={() => setShowPreviewModal(false)}
-                className="mt-4 w-full py-2 rounded-lg bg-gold text-bg-dark font-semibold"
+                className="mt-4 w-full py-2 md:py-3 rounded-lg bg-gold text-bg-dark font-semibold text-sm"
               >
                 Close
               </button>

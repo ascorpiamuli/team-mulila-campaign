@@ -69,7 +69,6 @@ export default function AdminSupporters() {
   const fetchSupporters = async () => {
     setIsLoading(true);
     try {
-      // Fetch all contact messages (volunteers, donors, ambassadors)
       const { data, error } = await supabase
         .from("contact_messages")
         .select("*")
@@ -98,7 +97,6 @@ export default function AdminSupporters() {
     const others = data.filter(s => s.support_type === "other").length;
     const unread = data.filter(s => !s.is_read).length;
 
-    // Calculate recent applications
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -313,50 +311,52 @@ export default function AdminSupporters() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((card, idx) => (
-          <div key={idx} className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-gold to-gold-light rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-            <div className="relative bg-bg-card/50 backdrop-blur-sm rounded-xl border border-gold/20 p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-r ${card.color}`}>
-                  <card.icon className="h-6 w-6 text-white" />
+      {/* Stats Grid - Responsive with horizontal scroll on small screens */}
+      <div className="relative">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-6">
+          {statCards.map((card, idx) => (
+            <div key={idx} className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-gold to-gold-light rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
+              <div className="relative bg-bg-card/50 backdrop-blur-sm rounded-xl border border-gold/20 p-3 md:p-6">
+                <div className="flex items-center justify-between mb-2 md:mb-4">
+                  <div className={`p-2 md:p-3 rounded-xl bg-gradient-to-r ${card.color}`}>
+                    <card.icon className="h-4 w-4 md:h-6 md:w-6 text-white" />
+                  </div>
                 </div>
+                <p className="text-text-dim text-[10px] md:text-sm">{card.label}</p>
+                <p className="text-xl md:text-3xl font-bold text-text-light mt-0.5 md:mt-1">{card.value}</p>
               </div>
-              <p className="text-text-dim text-sm">{card.label}</p>
-              <p className="text-3xl font-bold text-text-light mt-1">{card.value}</p>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-          <div className="flex items-center gap-3">
-            <Mail className="h-5 w-5 text-gold" />
+      {/* Secondary Stats - Responsive row */}
+      <div className="grid grid-cols-3 gap-3 md:gap-6">
+        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Mail className="h-4 w-4 md:h-5 md:w-5 text-gold" />
             <div>
-              <p className="text-text-dim text-sm">Unread</p>
-              <p className="text-2xl font-bold text-text-light">{stats.unread}</p>
+              <p className="text-text-dim text-[10px] md:text-sm">Unread</p>
+              <p className="text-lg md:text-2xl font-bold text-text-light">{stats.unread}</p>
             </div>
           </div>
         </div>
-        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-gold" />
+        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Calendar className="h-4 w-4 md:h-5 md:w-5 text-gold" />
             <div>
-              <p className="text-text-dim text-sm">This Week</p>
-              <p className="text-2xl font-bold text-text-light">{stats.recentWeek}</p>
+              <p className="text-text-dim text-[10px] md:text-sm">This Week</p>
+              <p className="text-lg md:text-2xl font-bold text-text-light">{stats.recentWeek}</p>
             </div>
           </div>
         </div>
-        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="h-5 w-5 text-gold" />
+        <div className="bg-bg-card/50 rounded-xl border border-gold/20 p-3 md:p-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-gold" />
             <div>
-              <p className="text-text-dim text-sm">This Month</p>
-              <p className="text-2xl font-bold text-text-light">{stats.recentMonth}</p>
+              <p className="text-text-dim text-[10px] md:text-sm">This Month</p>
+              <p className="text-lg md:text-2xl font-bold text-text-light">{stats.recentMonth}</p>
             </div>
           </div>
         </div>

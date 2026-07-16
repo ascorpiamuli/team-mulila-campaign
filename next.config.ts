@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // CRITICAL: Enable standalone output for smaller Docker images
+  output: 'standalone',
+
+  // Disable telemetry
+  poweredByHeader: false,
+  reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+
   images: {
     remotePatterns: [
       {
@@ -16,28 +25,32 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // Google Images
+        hostname: 'lh3.googleusercontent.com',
       },
       {
         protocol: 'https',
-        hostname: 'avatars.githubusercontent.com', // GitHub avatars
-      },
-      // ImgBB domains
-      {
-        protocol: 'https',
-        hostname: 'i.ibb.co', // Main ImgBB image hosting domain
+        hostname: 'avatars.githubusercontent.com',
       },
       {
         protocol: 'https',
-        hostname: '*.ibb.co', // For subdomains like image.ibb.co
+        hostname: 'i.ibb.co',
       },
       {
         protocol: 'https',
-        hostname: 'ibb.co', // For direct ImgBB URLs
+        hostname: '*.ibb.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ibb.co',
       },
     ],
     domains: ['images.unsplash.com'],
+    // Optimize images
+    unoptimized: false,
   },
+
+  // Production optimizations
+  productionBrowserSourceMaps: false,
 }
 
 module.exports = nextConfig

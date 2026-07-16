@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, JSX } from "react";
-import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle, AlertCircle, User, Mail, Phone, ChevronDown, CalendarDays, Clock3, MapPinned, UsersRound, ArrowRight, Sparkles, Shield, Info, Image as ImageIcon } from "lucide-react";
+import { useEffect, useState, useCallback, useRef, JSX } from "react";
+import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle, AlertCircle, User, Mail, Phone, ChevronDown, CalendarDays, Clock3, MapPinned, UsersRound, ArrowRight, Sparkles, Shield, Info, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { supabase } from '../../lib/supabase/client';
@@ -53,6 +53,10 @@ export default function EventsSection() {
   const [showConstituencyDropdown, setShowConstituencyDropdown] = useState(false);
   const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
   const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     fullName: "",
@@ -110,6 +114,31 @@ export default function EventsSection() {
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  // Check scroll position
+  const checkScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [checkScroll, events]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 320;
+      const target = direction === 'left'
+        ? scrollContainerRef.current.scrollLeft - scrollAmount
+        : scrollContainerRef.current.scrollLeft + scrollAmount;
+      scrollContainerRef.current.scrollTo({ left: target, behavior: 'smooth' });
+    }
+  };
 
   const handleRegisterClick = (event: Event) => {
     setSelectedEvent(event);
@@ -272,20 +301,20 @@ export default function EventsSection() {
 
   if (isLoading) {
     return (
-      <section id="events" className="py-20 bg-gradient-to-b from-bg-dark to-bg-dark/80">
+      <section id="events" className="py-16 bg-gradient-to-b from-bg-dark to-bg-dark/80">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="mb-12 text-center">
+          <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5 mb-4">
               <Calendar className="h-4 w-4 text-gold animate-pulse" />
               <span className="text-xs font-semibold text-gold">LOADING EVENTS</span>
             </div>
-            <h2 className="font-montserrat text-4xl font-bold md:text-5xl">
+            <h2 className="font-montserrat text-3xl font-bold md:text-4xl">
               <span className="text-gold">UPCOMING</span> EVENTS
             </h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-bg-card/50 rounded-2xl border border-gold/20 p-6 animate-pulse">
+              <div key={i} className="min-w-[280px] max-w-[320px] flex-shrink-0 bg-bg-card/50 rounded-2xl border border-gold/20 p-5 animate-pulse">
                 <div className="h-8 w-24 bg-gold/10 rounded-full mb-4"></div>
                 <div className="h-6 bg-gold/10 rounded w-3/4 mb-3"></div>
                 <div className="space-y-2">
@@ -304,36 +333,64 @@ export default function EventsSection() {
 
   return (
     <>
-      <section id="events" className="py-20 bg-gradient-to-b from-bg-dark to-bg-dark/80">
+      <section id="events" className="py-16 bg-gradient-to-b from-bg-dark to-bg-dark/80">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="mb-12 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5 mb-4">
-              <Calendar className="h-4 w-4 text-gold" />
-              <span className="text-xs font-semibold text-gold">MARK YOUR CALENDAR</span>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-4 py-1.5 mb-4">
+                <Calendar className="h-4 w-4 text-gold" />
+                <span className="text-xs font-semibold text-gold">MARK YOUR CALENDAR</span>
+              </div>
+              <h2 className="font-montserrat text-3xl font-bold md:text-4xl">
+                <span className="text-gold">UPCOMING</span> EVENTS
+              </h2>
+              <p className="mt-2 text-sm text-text-dim max-w-xl">
+                Join us in these transformative events across Kitui County.
+              </p>
             </div>
-            <h2 className="font-montserrat text-4xl font-bold md:text-5xl">
-              <span className="text-gold">UPCOMING</span> EVENTS
-            </h2>
-            <p className="mt-4 text-text-dim max-w-2xl mx-auto">
-              Join us in these transformative events across Kitui County. Be part of the change
-              and connect with like-minded individuals shaping our future.
-            </p>
+
+            {/* Scroll Buttons */}
+            {events.length > 3 && (
+              <div className="flex gap-2 mt-4 md:mt-0">
+                <button
+                  onClick={() => scroll('left')}
+                  disabled={!canScrollLeft}
+                  className="p-2 rounded-full border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => scroll('right')}
+                  disabled={!canScrollRight}
+                  className="p-2 rounded-full border border-gold/30 text-gold hover:bg-gold/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {/* Horizontal Scroll Container */}
+          <div
+            ref={scrollContainerRef}
+            className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide snap-x snap-mandatory"
+            onScroll={checkScroll}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             {events.map((event, index) => (
               <div
                 key={event.id}
-                className="animate-fade-up opacity-0 group"
+                className="min-w-[280px] max-w-[340px] flex-shrink-0 snap-start animate-fade-up opacity-0 group"
                 style={{ animationDelay: `${index * 0.1}s`, animationFillMode: "forwards" }}
               >
-                <div className="relative bg-bg-card/80 backdrop-blur-sm rounded-2xl border border-gold/20 overflow-hidden hover:border-gold/50 transition-all duration-500 hover:shadow-2xl hover:shadow-gold/10 hover:-translate-y-2 h-full flex flex-col">
-                  {/* Gradient Overlay */}
+                <div className="relative bg-bg-card/80 backdrop-blur-sm rounded-2xl border border-gold/20 overflow-hidden hover:border-gold/50 transition-all duration-500 hover:shadow-2xl hover:shadow-gold/10 hover:-translate-y-1 h-full flex flex-col">
                   <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                   {/* Event Image */}
                   {event.image_url ? (
-                    <div className="relative w-full h-48 overflow-hidden">
+                    <div className="relative w-full h-40 overflow-hidden">
                       <Image
                         src={event.image_url}
                         alt={event.title}
@@ -344,70 +401,64 @@ export default function EventsSection() {
                       <div className="absolute inset-0 bg-gradient-to-t from-bg-card/80 via-transparent to-transparent" />
                     </div>
                   ) : (
-                    <div className="relative w-full h-48 bg-gradient-to-br from-gold/10 to-gold/5 flex items-center justify-center">
+                    <div className="relative w-full h-40 bg-gradient-to-br from-gold/10 to-gold/5 flex items-center justify-center">
                       <div className="flex flex-col items-center gap-2 text-text-dim/30">
-                        <ImageIcon className="h-12 w-12" />
+                        <ImageIcon className="h-10 w-10" />
                         <span className="text-xs">No image</span>
                       </div>
                     </div>
                   )}
 
                   {/* Event Type Badge */}
-                  <div className="relative px-6 pt-4">
-                    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border ${getEventTypeColor(event.type)}`}>
+                  <div className="relative px-4 pt-3">
+                    <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border ${getEventTypeColor(event.type)}`}>
                       {getEventTypeIcon(event.type)}
                       {event.type}
                     </div>
                   </div>
 
                   {/* Content */}
-                  <div className="relative p-6 pt-3 flex-1 flex flex-col">
-                    <h3 className="font-montserrat text-xl font-bold text-text-light mb-3 leading-tight group-hover:text-gold transition-colors duration-300">
+                  <div className="relative p-4 pt-2 flex-1 flex flex-col">
+                    <h3 className="font-montserrat text-base font-bold text-text-light mb-2 leading-tight line-clamp-2 group-hover:text-gold transition-colors duration-300">
                       {event.title}
                     </h3>
 
-                    {/* Event Details Grid */}
-                    <div className="space-y-2.5 mb-4 flex-1">
-                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
-                        <CalendarDays className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
-                        <span>{formatDate(event.date)}</span>
+                    {/* Event Details Grid - Compact */}
+                    <div className="space-y-1.5 mb-2 flex-1">
+                      <div className="flex items-center gap-2 text-xs text-text-dim">
+                        <CalendarDays className="h-3.5 w-3.5 text-gold flex-shrink-0" />
+                        <span className="truncate">{formatDate(event.date)}</span>
                       </div>
-                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
-                        <Clock3 className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
-                        <span>{event.time}</span>
+                      <div className="flex items-center gap-2 text-xs text-text-dim">
+                        <Clock3 className="h-3.5 w-3.5 text-gold flex-shrink-0" />
+                        <span className="truncate">{event.time}</span>
                       </div>
-                      <div className="flex items-start gap-2.5 text-sm text-text-dim">
-                        <MapPinned className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
-                        <span className="line-clamp-1">{event.venue}</span>
+                      <div className="flex items-center gap-2 text-xs text-text-dim">
+                        <MapPinned className="h-3.5 w-3.5 text-gold flex-shrink-0" />
+                        <span className="truncate">{event.venue}</span>
                       </div>
                       {event.expected_attendees && (
-                        <div className="flex items-start gap-2.5 text-sm text-text-dim">
-                          <UsersRound className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
-                          <span>{event.expected_attendees.toLocaleString()} expected attendees</span>
+                        <div className="flex items-center gap-2 text-xs text-text-dim">
+                          <UsersRound className="h-3.5 w-3.5 text-gold flex-shrink-0" />
+                          <span>{event.expected_attendees.toLocaleString()} attendees</span>
                         </div>
                       )}
                     </div>
-
-                    {/* Description */}
-                    <p className="text-sm text-text-dim mb-4 line-clamp-2 flex-1">
-                      {event.description}
-                    </p>
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 mt-auto">
                       <button
                         onClick={() => handleViewDetails(event)}
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-gold/30 text-gold hover:bg-gold/10 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-1.5 group/btn"
+                        className="flex-1 px-3 py-2 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-all duration-300 text-xs font-medium flex items-center justify-center gap-1 group/btn"
                       >
-                        <Info className="h-4 w-4" />
+                        <Info className="h-3.5 w-3.5" />
                         Details
-                        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover/btn:translate-x-1" />
                       </button>
                       <button
                         onClick={() => handleRegisterClick(event)}
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 flex items-center justify-center gap-1.5"
+                        className="flex-1 px-3 py-2 rounded-lg bg-gradient-to-r from-gold to-gold-light text-bg-dark font-semibold text-xs hover:shadow-lg hover:shadow-gold/30 transition-all duration-300 flex items-center justify-center gap-1"
                       >
-                        <Ticket className="h-4 w-4" />
+                        <Ticket className="h-3.5 w-3.5" />
                         Register
                       </button>
                     </div>
@@ -415,8 +466,8 @@ export default function EventsSection() {
 
                   {/* Status Badge */}
                   {event.status === "upcoming" && (
-                    <div className="absolute top-4 right-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-medium">
+                    <div className="absolute top-3 right-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-medium">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                         Upcoming
                       </span>
@@ -435,6 +486,19 @@ export default function EventsSection() {
         </div>
       </section>
 
+      {/* CSS for scrollbar hiding */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  `
+      }} />
+
       {/* Event Details Modal */}
       {showEventDetailsModal && selectedEventDetails && (
         <div
@@ -452,10 +516,10 @@ export default function EventsSection() {
               <X className="h-5 w-5" />
             </button>
 
-            <div className="p-8">
+            <div className="p-6 md:p-8">
               {/* Event Image */}
               {selectedEventDetails.image_url && (
-                <div className="relative w-full h-64 rounded-xl overflow-hidden mb-6">
+                <div className="relative w-full h-56 rounded-xl overflow-hidden mb-6">
                   <Image
                     src={selectedEventDetails.image_url}
                     alt={selectedEventDetails.title}
@@ -468,48 +532,48 @@ export default function EventsSection() {
               )}
 
               {/* Header */}
-              <div className="mb-6">
-                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold border ${getEventTypeColor(selectedEventDetails.type)} mb-4`}>
+              <div className="mb-5">
+                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${getEventTypeColor(selectedEventDetails.type)} mb-3`}>
                   {getEventTypeIcon(selectedEventDetails.type)}
                   {selectedEventDetails.type}
                 </div>
-                <h2 className="font-montserrat text-3xl font-bold text-gold">
+                <h2 className="font-montserrat text-2xl md:text-3xl font-bold text-gold">
                   {selectedEventDetails.title}
                 </h2>
               </div>
 
               {/* Event Details Grid */}
-              <div className="grid gap-4 mb-6">
+              <div className="grid gap-3 mb-5">
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
-                  <CalendarDays className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <CalendarDays className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-text-dim">Date</p>
-                    <p className="text-text-light font-medium">{formatDate(selectedEventDetails.date)}</p>
+                    <p className="text-text-light font-medium text-sm">{formatDate(selectedEventDetails.date)}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
-                  <Clock3 className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <Clock3 className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-text-dim">Time</p>
-                    <p className="text-text-light font-medium">{selectedEventDetails.time}</p>
+                    <p className="text-text-light font-medium text-sm">{selectedEventDetails.time}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
-                  <MapPinned className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                  <MapPinned className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-text-dim">Venue</p>
-                    <p className="text-text-light font-medium">{selectedEventDetails.venue}</p>
+                    <p className="text-text-light font-medium text-sm">{selectedEventDetails.venue}</p>
                   </div>
                 </div>
 
                 {selectedEventDetails.expected_attendees && (
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-dark/50 border border-gold/10">
-                    <UsersRound className="h-5 w-5 text-gold flex-shrink-0 mt-0.5" />
+                    <UsersRound className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs text-text-dim">Expected Attendees</p>
-                      <p className="text-text-light font-medium">{selectedEventDetails.expected_attendees.toLocaleString()}</p>
+                      <p className="text-text-light font-medium text-sm">{selectedEventDetails.expected_attendees.toLocaleString()}</p>
                     </div>
                   </div>
                 )}
@@ -524,7 +588,7 @@ export default function EventsSection() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => {
                     setShowEventDetailsModal(false);
@@ -547,7 +611,7 @@ export default function EventsSection() {
         </div>
       )}
 
-      {/* Registration Modal */}
+      {/* Registration Modal - Keep existing implementation */}
       {showRegistrationModal && selectedEvent && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"

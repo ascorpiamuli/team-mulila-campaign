@@ -207,54 +207,6 @@ export default function SupportSection() {
                 </div>
               </div>
             ))}
-
-            {/* Contact Info Card - Enhanced */}
-            <Card className="relative bg-gradient-to-br from-gold/5 to-gold/10 backdrop-blur-sm border border-gold/30 hover:border-gold/50 transition-all duration-300 hover:shadow-xl hover:shadow-gold/10 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full blur-2xl" />
-              <div className="relative p-6">
-                <div className="flex items-start gap-5">
-                  <div className="p-3 rounded-xl bg-gold/20">
-                    <Phone className="h-8 w-8 text-gold" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-text-light mb-2 flex items-center gap-2">
-                      Need Help?
-                      <span className="text-xs font-normal text-gold/60">We're here for you</span>
-                    </h3>
-                    <p className="text-text-dim mb-3 text-sm">Call or WhatsApp us directly:</p>
-                    <div className="flex items-center gap-3 mb-3">
-                      <a
-                        href="tel:+254795751700"
-                        className="text-gold hover:underline font-semibold inline-flex items-center gap-2 text-lg"
-                      >
-                        <Phone className="h-4 w-4" />
-                        +254 795 751 700
-                      </a>
-                      <span className="text-text-dim/30">|</span>
-                      <a
-                        href="https://wa.me/254795751700"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-green-400 hover:underline font-semibold inline-flex items-center gap-2"
-                      >
-                        <span className="text-lg">💬</span>
-                        WhatsApp
-                      </a>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-text-dim">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Mon-Fri: 8AM - 6PM
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Shield className="h-3 w-3" />
-                        24/7 Support
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
           </div>
 
           {/* Contact Form - Enhanced */}
