@@ -42,7 +42,7 @@ jobs:
             set -e
             echo "🚀 Starting deployment..."
 
-            cd /home/dockeruser/mulila_governor
+            cd /home/dockeruser/mulila
 
             echo "📦 Pulling latest image..."
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/mulila_governor:latest
